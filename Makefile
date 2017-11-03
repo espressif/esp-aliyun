@@ -23,7 +23,8 @@ GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS=    user \
             platforms	\
-            aliyun_ota	\
+            ota	\
+            mqtt	\
 
 endif # } PDIR
 
@@ -48,8 +49,8 @@ endif
 COMPONENTS_eagle.app.v6 = \
     user/libuser.a  \
     platforms/libplatforms.a	\
-    aliyun_ota/libaliyun_ota.a 
-    
+    ota/libaliyun_ota.a 	\
+    mqtt/libaliyun_mqtt.a 	\
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \
@@ -140,7 +141,8 @@ INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/security
 INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl
 INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-log
 INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/mqtt
-INCLUDES += -I $(PDIR)include/aliyun_ota
+INCLUDES += -I $(PDIR)include/ota
+INCLUDES += -I $(PDIR)include/mqtt
 
 sinclude $(SDK_PATH)/Makefile
 
