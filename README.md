@@ -1,392 +1,171 @@
-# 基于 SSL/TLS 的 MQTT 参考示例 
----------------------------------------------------------------
-### 一: 目的 
-##### 1. 将 ESP8266 上收集到的数据通过基于阿里物联网套件的 MQTT 协议发送到阿里物联网控制台  
-##### 2. ESP8266 通过订阅来接收来自阿里物联网控制台发布的 MQTT 消息  
-  
-  
-### 二: 前提准备
-##### 1. 一颗来自于乐鑫科技的精致WiFi芯片/模组- ESP8266/ESP-WROOM-02
-##### 2. 编译器和编译环境搭建，完成在 8266 上第一个 hello-world.[Click](http://www.espressif.com/sites/default/files/documentation/2a-esp8266-sdk_getting_started_guide_cn.pdf)
-  
-  
-### 三: 示例步骤
-#### Step 1: 阿里物联网控制台环境搭建
-  
-#### a) [创建/登录阿里云账号](https://account.aliyun.com/login/login.htm)
-#### b) 登录账号后，左上角全部导航->产品->物联网->物联网套件，开通并管理控制台
-  
-在控制台创建产品，如 ESP8266，创建完后，会得到一个 ProductKey，这是我们应用和控制台交互中必要的访问参数
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/%E4%BA%A7%E5%93%81%E7%AE%A1%E7%90%86.png)
-  
-进入产品中的设备管理，可以添加设备等，如我们创建设备 esp8266_test001，我们或获取到 deviceName 和 deviceSecret，这也是我们应用和控制台交互中必要的访问参数
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/%E8%AE%BE%E5%A4%87%E7%AE%A1%E7%90%86.png)
+# ESP8266 对接阿里云指南
 
-#### c) 在消息通信页面设置一些 MQTT 的 Topic,如我们通过定义Topic类来定义 relay 和 data 的 topic
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/topic.png)
+# 目录
 
-#### d)[可选] 开通**规则引擎**,目的是转发 MQTT 消息  
-  
-首先创建规则:
+- [介绍](#Introduction)  
+- [一：目的](#aim)  
+- [二：硬件准备](#hardwareprepare)  
+- [三：阿里云平台准备](#aliyunprepare)  
+- [四：环境搭建](#compileprepare)  
+- [五：SDK 准备](#sdkprepare)  
+- [六：编译&烧写&运行](#makeflash)  
 
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/%E8%A7%84%E5%88%99%E5%BC%95%E6%93%8E-%E5%88%9B%E5%BB%BA%E8%A7%84%E5%88%99.png)
+# <span id = "Introduction">介绍</span>
+[ESP8266](http://espressif.com/zh-hans/products/hardware/esp8266ex/overview)是一颗低功耗、高集成度、性能稳定的 Wi-Fi 芯片，是物联网开发的首选设备。ESP8266EX 专为移动设备、可穿戴电子产品和物联网应用而设计，通过多项专有技术实现了最低功耗。ESP8266EX 有三种运行模式：激活模式、睡眠模式和深度睡眠模式，能够延长电池寿命。 ESP8266EX 是业内集成度最高的 Wi-Fi 芯片，最小封装尺寸仅为 5mm x 5mm。ESP8266EX 高度集成了天线开关、射频 balun、功率放大器、低噪放大器、过滤器和电源管理模块，仅需很少的外围电路，可将所占 PCB 空间降到最低。ESP8266EX 集成了更多的元器件，性能稳定，易于制造，工作温度范围达到 -40°C 到 +125°C。
+
+[阿里云物联网套件](https://github.com/aliyun/iotkit-embedded)是阿里云专门为物联网领域的开发人员推出的，其目的是帮助开发者搭建安全性能强大的数据通道，方便终端（如传感器、执行器、嵌入式设备或智能家电等等）和云端的双向通信。全球多节点部署让海量设备全球范围都可以安全低延时接入阿里云IoT Hub，安全上提供多重防护保障设备云端安全，性能上能够支撑亿级设备长连接，百万消息并发。物联网套件还提供了一站式托管服务，数据从采集到计算到存储，用户无需购买服务器部署分布式架构，用户通过规则引擎只需在web上配置规则即可实现采集+计算+存储等全栈服务。总而言之，基于物联网套件提供的服务，物联网开发者可以快速搭建稳定可靠的物联网平台。
+
+# <span id = "aim">一：目的</span>
+本文基于 linux 环境和 windows 环境，介绍 ESP8266 对接阿里云平台的具体流程，供读者参考。
+
+# <span id = "hardwareprepare">二：硬件准备</span>
+- **linux 环境** 或 **windows 环境**
+用来编译&烧写&运行等操作的必须环境。  
+
+- **ESP8266 设备**
+ESP8266 设备包括 [ESP8266芯片](http://espressif.com/zh-hans/products/hardware/esp8266ex/overview)，[ESP8266模组ESP-WROOM-02](http://espressif.com/zh-hans/products/hardware/esp-wroom-02/overview)，[ESP8266开发板ESP-Launcher](http://espressif.com/zh-hans/products/hardware/development-boards)等。如:  
+
+![esp-launcher](_static/p1.png)
+
+- **USB 线**
+连接 PC 和 ESP8266，用来烧写/下载程序，查看 log 等作用。
+
+# <span id = "aliyunprepare">三：阿里云平台准备</span>
+根据[阿里官方文档](https://github.com/aliyun/iotkit-embedded?spm=5176.doc42648.2.4.e9Zu05)，在阿里云平台创建产品，创建设备，同时自动产生 product key, device name, device secret。  
+product key, device name, device secret 将在 6.1.1 节用到。
+
+# <span id = "compileprepare">四：环境搭建</span>
+**如果您熟悉ESP8266开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录。需要您结合官方的相关文档来理解。如您需阅读[ESP8266 快速入门指南](http://espressif.com/zh-hans/support/download/overview)文档等。**  
+
+## 4.1 编译器环境搭建
+根据你实际环境选择步骤 4.1.1 或 4.1.2  
+
+### 4.1.1 linux 系统
+根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK) 中第二步 **Requirements**，下载并编译整个 esp-open-sdk。  
+esp-open-sdk 中主要包含 ESP8266 SDK([ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK) 和 [ESP8266_NONOS_SDK](https://github.com/espressif/ESP8266_NONOS_SDK))的编译器 xtensa-lx106-elf， 以及 ESP SDK(ESP SDK 包括 esp-idf, ESP8266 SDK等) 的烧写工具 esptool。  
+**注意**：编译 esp-open-sdk 过程中，国内可能会比较慢，挂载 VPN 会快一些。  
+
+### 4.1.2 windows 系统
+你有两种方式 a) 和 b) 获取编译器，推荐使用 a)  
+a) 下载包含有编译器的 cygwin  
+[下载链接](https://pan.baidu.com/s/1pKJJ97H)  
+下载并解压 cygwin， cygwin 为用户贴心准备了 windows 下的 linux 环境和 ESP8266 的编译器 xtensa-lx106-elf。  
+xtensa-lx106-elf 位于 cygwin/opt/ 目录下,更多信息请参考 cygwin/使用说明.pdf  
   
-其次建立转发机制:
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/%E8%A7%84%E5%88%99%E5%BC%95%E6%93%8E-%E8%BD%AC%E5%8F%91%E8%AF%A6%E7%BB%86.png)
-  
-#### Step 2: 编译&烧写
-**获取本仓库之后，需要做一些小的SDK改动来适应你的开发环境**
-  
-#### a) 修改产品信息
-  
-#### 在 user/user_main.c 中修改以下字段
+b) 下载虚拟机 && 下载包含有编译器的 lubuntu 镜像  
+根据官方的 [ESP8266 SDK 入门指南](http://espressif.com/zh-hans/support/download/documents?keys=&field_type_tid%5B%5D=14) 中 3.3 节来获取编译器  
+
+## 4.2 烧录工具/下载工具获取
+linux 系统：  
+烧录工具位于 4.1.1 中 esp-open-sdk/esptool/esptool.py  
+烧录方式参考命令:  
 ```
-PRODUCT_KEY
-DEVICE_NAME
-DEVICE_SECRET
-
-TOPIC_DATA
-TOPIC_UPDATE
-TOPIC_ERROR
-TOPIC_GET
-TOPIC_RELAY
-```
-
-#### b)[可选] sntp server 修改
-
-在 user/user_main.c 中修改 sntp_setservername 使得 SNTP 可以正常启动
-
-#### c) 修改 WiFi 信息
-
-在 initialize_wifi() 中 修改你的 WiFi SSID 和 WiFi password
-
-#### d) 编译
-
-```
-$./gen_misc.sh
-```
- 
-#### e) 擦除整块 flash 
-
-**将 ESP8266 拨至烧写状态**
-
-```
-$~/esp/esp-idf/components/esptool_py/esptool/esptool.py --port /dev/ttyUSB0 --baud 921600 erase_flash
+$ esp-open-sdk/esptool/esptool.py --help
 ```
 
-#### f) 烧写固件 
+windows 系统：  
+烧录工具链接：[Flash 下载工具(ESP8266 & ESP32)](http://espressif.com/zh-hans/support/download/other-tools)  
+烧录方式参考 [ESP8266 SDK 入门指南](http://espressif.com/zh-hans/support/download/documents?keys=&field_type_tid%5B%5D=14) 中第六节下载固件  
 
-**将 ESP8266 拨至烧写状态**
+# <span id = "sdkprepare">五：SDK 准备</span> 
+用户可通过如下方式获取整个 SDK。  
+```
+$ git clone https://github.com/espressif/esp8266-aliyun.git
+$ cd esp8266-aliyun
+$ git submodule update --init --recursive
+```
+
+or
 
 ```
-$python ~/esp/esp-idf/components/esptool_py/esptool/esptool.py --port /dev/ttyUSB0 --baud 921600 write_flash --flash_size 2MB-c1 0x00000 ../glab_esp8266-aliyun-demo/bin/boot_v1.6.bin 0x1000 ../glab_esp8266-aliyun-demo/bin/upgrade/user1.2048.new.5.bin 0x1fe000 ../glab_esp8266-aliyun-demo/bin/blank.bin 0x1fc000 ../glab_esp8266-aliyun-demo/bin/esp_init_data_default.bin
+$ git clone --recursive https://github.com/espressif/esp8266-aliyun.git
 ```
 
-#### Step 3: 运行&串口显示结果
+目录结构如下：
+```
+├── bin					  // 存放编译后生成的文件
+├── esp8266-rtos-sdk	  // esp8266 rtos 核心组件
+├── gen_misc.sh			  // 编译命令
+├── include				  // 用户可用的头文件
+|	├── aliyun_config.h	  // 配置连接阿里云相关参数
+|	├── mqtt.h			  // 用户可用的 mqtt 接口
+|	└── ota.h			  // 配置 OTA 相关参数
+├── Makefile			  // 总编译入口 makefile
+├── mqtt				  // mqtt 实现
+├── ota					  // OTA 实现
+├── platforms			  // 适配阿里物联网套件
+|	├── aliyun			  
+|	│   ├── IoT-SDK_V2.0  // 阿里物联网套件
+|	│   ├── Makefile	  // 套件编译 makefile
+|	│   └── platform      // 物联网套件平台适配
+|	├── Makefile		  // 套件编译 makefile
+|	└── README.md	  	  // 说明文档
+├── README.md			  // 说明文档
+└── user				  // 用户程序入口
+```
 
-**将 ESP8266 拨至运行状态**
+# <span id = "makeflash">六：编译&烧写&运行</span>
+## 6.1 编译
+### 6.1.1 SDK 修改
+aliyun_config.h  
+```
+#define PRODUCT_KEY             "********"  // type:string
+#define DEVICE_NAME             "********"  // type:string
+#define DEVICE_SECRET           "********"  // type:string
+...
+#define WIFI_SSID       "********"       // type:string, your AP/router SSID to config your device networking
+#define WIFI_PASSWORD   "********"       // type:string, your AP/router password
+```
+将第三节中阿里云平台产生的参数填充到 PRODUCT_KEY,DEVICE_NAME,DEVICE_SECRET   
+将你可用的热点/路由器用户名密码填充到 WIFI_SSID,WIFI_PASSWORD
+
+### 6.1.2 导出编译器
+导出 4.1 节下载的编译器，如：
+```
+$ export PATH=/opt/xtensa-lx106-elf/bin/:$PATH
+```
+### 6.1.3 编译 SDK
 
 ```
-$miniterm.py /dev/ttyUSB0 74880
+$ ./gen_misc.sh
 ```
-**如果以上正常进行，您将看到 ESP8266 上传 data ，同时 ESP8266 收到来自控制台的 data ,以及规则引擎转发的 relay 。**
 
-log大致如下:
+编译完成后，将生成 `esp8266-aliyun/bin/upgrade/user1.2048.new.5.bin` 固件。
 
-ets Jan  8 2013,rst cause:1, boot mode:(3,2)
+## 6.2 烧写/下载固件
+将 USB 线连接好 ESP8266 和 PC,确保下面烧写端口正确。windows 烧写方法参考 4.2 节，烧写 bin 和烧写地址参考 6.2.2 节。  
 
-load 0x40100000, len 2408, room 16 
+### 6.2.1[可选] 擦除 flash
+```
+$ ~/esp/esp-open-sdk/esptool/esptool.py --port /dev/ttyUSB0 --baud 921600 erase_flash
+```
 
-tail 8
+### 6.2.2 烧录程序
+```
+$ ~/esp/esp-open-sdk/esptool/esptool.py --port /dev/ttyUSB0 --baud 921600 write_flash --flash_size 2MB-c1 0x1000 bin/upgrade/user1.2048.new.5.bin 0x0000 ~/bin/boot_v1.6.bin  0x1fc000 ~/bin/esp_init_data_default.bin 0x1fe000 ~/bin/blank.bin
+```
 
-chksum 0xe5
+## 6.3 运行
+打开串口工具，连接，连接配置如下:  
+波特率: 74880  
+数据位: 8  
+停止位: 1  
+奇偶校验: None  
+流控: None  
 
-load 0x3ffe8000, len 776, room 0 
+如 linux 中使用 miniterm 串口工具：
+```
+$ miniterm.py /dev/ttyUSB3 74880
+```
 
-tail 8
+将 ESP8266 拨至运行状态，即可看到如下 log：  
+log 显示了 ESP8266 基于 TLS 建立了与阿里云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在阿里云控制台上，也能看到 ESP8266 推送的 MQTT 消息。  
 
-chksum 0x84
+![p2](_static/p2.png)
 
-load 0x3ffe8310, len 632, room 0 
+![p3](_static/p3.png)
 
-tail 8
 
-chksum 0xd8
 
-csum 0xd8
 
-2nd boot version : 1.6
-
-  SPI Speed      : 40MHz
-
-  SPI Mode       : QIO
-
-  SPI Flash Size & Map: 16Mbit(1024KB+1024KB)
-
-jump to run user1 @ 1000
-
-
-
-OS SDK ver: 1.5.0-dev(caff253) compiled @ Oct 23 2017 17:42:20
-
-phy ver: 1055_1, pp ver: 10.7
-
-
-
-rf cal sector: 507
-
-tcpip_task_hdl : 3ffeffd0, prio:10,stack:512
-
-idle_task_hdl : 3fff0070,prio:0, stack:384
-
-tim_task_hdl : 3fff2828, prio:2,stack:512
-
-SDK version:1.5.0-dev(caff253) 
-
-SDK compile time:Oct 24 2017 20:04:39
-
-SDK version:1.5.0-dev(caff253) 50840
-
-mode : sta(18:fe:34:ed:87:fc)
-
-add if0
-
-[heap check task] free heap size:49064
-
-scandone
-
-state: 0 -> 2 (b0)
-
-state: 2 -> 3 (0)
-
-state: 3 -> 5 (10)
-
-add 0
-
-aid 7
-
-pm open phy_2,type:2 0 0
-
-connected with BL_841R, channel 12
-
-dhcp client start...
-
-cnt 
-
-[heap check task] free heap size:48288
-
-ip:192.168.111.105,mask:255.255.255.0,gw:192.168.111.1
-
-Connected.Initializing SNTP
-
-please start sntp first !
-
-current time : Thu Jan 01 00:00:00 1970
-
-did not get a valid time from sntp server
-
-[heap check task] free heap size:48296
-
-current time : Tue Oct 24 20:05:01 2017
-
-[ALIYUN] MQTT client example begin, free heap size:40016
-
-[inf] _ssl_client_init(166): Loading the CA root certificate ...
-
-cert. version     : 3
-
-serial number     : 04:00:00:00:00:01:15:4B:5A:C3:94
-
-issuer name       : C=BE, O=GlobalSign nv-sa, OU=Root CA, CN=GlobalSign Root CA
-
-subject name      : C=BE, O=GlobalSign nv-sa, OU=Root CA, CN=GlobalSign Root CA
-
-issued  on        : 1998-09-01 12:00:00
-
-expires on        : 2028-01-28 12:00:00
-
-signed using      : RSA with SHA1
-
-RSA key size      : 2048 bits
-
-basic constraints : CA=true
-
-key usage         : Key Cert Sign, CRL Sign
-
-[inf] _ssl_parse_crt(134): crt content:451
-
-[inf] _ssl_client_init(174):  ok (0 skipped)
-
-[inf] TLSConnectNetwork(340): Connecting to /iot-auth.cn-shanghai.aliyuncs.com/443...
-
-[inf] TLSConnectNetwork(345):  ok
-
-[inf] TLSConnectNetwork(350):   . Setting up the SSL/TLS structure...
-
-[inf] TLSConnectNetwork(360):  ok
-
-[inf] TLSConnectNetwork(395): Performing the SSL/TLS handshake...
-
-[inf] TLSConnectNetwork(403):  ok
-
-[inf] TLSConnectNetwork(407):   . Verifying peer X.509 certificate..
-
-[inf] _real_confirm(83): certificate verification result: 0x00
-
-[inf] utils_network_ssl_disconnect(300): ssl_disconnect
-
-[inf] _ssl_client_init(166): Loading the CA root certificate ...
-
-cert. version     : 3
-
-serial number     : 04:00:00:00:00:01:15:4B:5A:C3:94
-
-issuer name       : C=BE, O=GlobalSign nv-sa, OU=Root CA, CN=GlobalSign Root CA
-
-subject name      : C=BE, O=GlobalSign nv-sa, OU=Root CA, CN=GlobalSign Root CA
-
-issued  on        : 1998-09-01 12:00:00
-
-expires on        : 2028-01-28 12:00:00
-
-signed using      : RSA with SHA1
-
-RSA key size      : 2048 bits
-
-
-basic constraints : CA=true
-
-key usage         : Key Cert Sign, CRL Sign
-
-[inf] _ssl_parse_crt(134): crt content:451
-
-[inf] _ssl_client_init(174):  ok (0 skipped)
-
-[inf] TLSConnectNetwork(340): Connecting to /public.iot-as-mqtt.cn-shanghai.aliyuncs.com/1883...
-
-[inf] TLSConnectNetwork(345):  ok
-
-[inf] TLSConnectNetwork(350):   . Setting up the SSL/TLS structure...
-
-[inf] TLSConnectNetwork(360):  ok
-
-[inf] TLSConnectNetwork(395): Performing the SSL/TLS handshake...
-
-[heap check task] free heap size:16512
-
-[inf] TLSConnectNetwork(403):  ok
-
-[inf] TLSConnectNetwork(407):   . Verifying peer X.509 certificate..
-
-[inf] _real_confirm(83): certificate verification result: 0x00
-
-[heap check task] free heap size:15888
-
-mqtt_client|326 :: rc = IOT_MQTT_Publish() = 3
-
-mqtt_client|353 :: packet-id=4, publish topic msg={"attr_name":"temperature", "attr_value":"0"}
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:12440 type:9
-
-SUBACK file:mqtt_client.c function:iotx_mc_cycle line:1587 heap size:12440
-
-event_handle|138 :: subscribe success, packet-id=1
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:12584 type:9
-
-SUBACK file:mqtt_client.c function:iotx_mc_cycle line:1587 heap size:12584
-
-event_handle|138 :: subscribe success, packet-id=2
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:14304 type:4
-
-PUBACK file:mqtt_client.c function:iotx_mc_cycle line:1577 heap size:14256
-
-event_handle|162 :: publish success, packet-id=3
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:16000 type:3
-
-PUBLISH file:mqtt_client.c function:iotx_mc_cycle line:1596 heap size:15968
-
-_demo_message_arrive|223 :: ----
-
-_demo_message_arrive|227 :: Topic: '*s' (Length: 33)
-
-********** topic [len:33] start addr:3fff6ab4 **********
-
-/ymXuzyfmuQb/esp8266_test001/data
-
----------- topic End ----------
-
-********** payload [len:22] start addr:3fff6ad7 **********
-
-message: 20 hello! 20 start!
-
----------- payload End ----------
-
-_demo_message_arrive|233 :: Payload: '*s' (Length: 22)
-
-_demo_message_arrive|234 :: ----
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:14352 type:4
-
-PUBACK file:mqtt_client.c function:iotx_mc_cycle line:1577 heap size:14352
-
-event_handle|162 :: publish success, packet-id=4
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:14528 type:3
-
-PUBLISH file:mqtt_client.c function:iotx_mc_cycle line:1596 heap size:14528
-
-_demo_message_arrive|223 :: ----
-
-_demo_message_arrive|227 :: Topic: '*s' (Length: 33)
-
-********** topic [len:33] start addr:3fff6ab4 **********
-
-/ymXuzyfmuQb/esp8266_test001/data
-
----------- topic End ----------
-
-********** payload [len:45] start addr:3fff6ad7 **********
-
-{"attr_name":"temperature", 20 "attr_value":"0"}
-
----------- payload End ----------
-
-_demo_message_arrive|233 :: Payload: '*s' (Length: 45)
-
-_demo_message_arrive|234 :: ----
-
-file:mqtt_client.c function:iotx_mc_cycle line:1567 heap size:14568 type:3
-
-PUBLISH file:mqtt_client.c function:iotx_mc_cycle line:1596 heap size:14568
-
-_demo_message_arrive|223 :: ----
-
-_demo_message_arrive|227 :: Topic: '*s' (Length: 34)
-
-********** topic [len:34] start addr:3fff6ab4 **********
-
-/ymXuzyfmuQb/esp8266_test001/relay
-
----------- topic End ----------
-
-
-********** payload [len:44] start addr:3fff6ad6 **********
-
-{"attr_name":"temperature","attr_value":"0"}
-
----------- payload End ----------
-
-_demo_message_arrive|233 :: Payload: '*s' (Length: 44)
-
-_demo_message_arrive|234 :: ----
-
-[heap check task] free heap size:16176
-
-mqtt_client|353 :: packet-id=5, publish topic msg={"attr_name":"temperature", "attr_value":"0"}
-
-#### Step 4: 控制台显示结果
-![如图](https://github.com/ustccw/RepoForShareData/blob/master/Alibaba/Hemashengxian/pic/consoleresult.png)
 
