@@ -83,25 +83,25 @@ $ git clone --recursive https://github.com/espressif/esp8266-aliyun.git
 
 目录结构如下：
 ```
-├── bin					  // 存放编译后生成的文件
-├── esp8266-rtos-sdk	  // esp8266 rtos 核心组件
+├── bin				  // 存放编译后生成的文件
+├── esp8266-rtos-sdk		  // esp8266 rtos 核心组件
 ├── gen_misc.sh			  // 编译命令
-├── include				  // 用户可用的头文件
+├── include			  // 用户可用的头文件
 |	├── aliyun_config.h	  // 配置连接阿里云相关参数
-|	├── mqtt.h			  // 用户可用的 mqtt 接口
-|	└── ota.h			  // 配置 OTA 相关参数
+|	├── mqtt.h		  // 用户可用的 mqtt 接口
+|	└── ota.h		  // 配置 OTA 相关参数
 ├── Makefile			  // 总编译入口 makefile
-├── mqtt				  // mqtt 实现
-├── ota					  // OTA 实现
+├── mqtt			  // mqtt 实现
+├── ota				  // OTA 实现
 ├── platforms			  // 适配阿里物联网套件
 |	├── aliyun			  
-|	│   ├── IoT-SDK_V2.0  // 阿里物联网套件
+|	│   ├── IoT-SDK_V2.0  	  // 阿里物联网套件
 |	│   ├── Makefile	  // 套件编译 makefile
-|	│   └── platform      // 物联网套件平台适配
+|	│   └── platform     	  // 物联网套件平台适配
 |	├── Makefile		  // 套件编译 makefile
 |	└── README.md	  	  // 说明文档
 ├── README.md			  // 说明文档
-└── user				  // 用户程序入口
+└── user			  // 用户程序入口
 ```
 
 # <span id = "makeflash">六：编译&烧写&运行</span>
