@@ -66,12 +66,14 @@ static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
         rngoffset++;
         rnglen--;
     }
+
     return 0;
 }
 
 static void _ssl_debug(void *ctx, int level, const char *file, int line, const char *str)
 {
     ((void) level);
+
     if (NULL != ctx) {
         fprintf((FILE *) ctx, "%s:%04d: %s", file, line, str);
         fflush((FILE *) ctx);
@@ -83,6 +85,7 @@ static int _real_confirm(int verify_result)
     SSL_LOG("certificate verification result: 0x%02x", verify_result);
 
 #if defined(FORCE_SSL_VERIFY)
+
     if ((verify_result & MBEDTLS_X509_BADCERT_EXPIRED) != 0) {
         SSL_LOG("! fail ! ERROR_CERTIFICATE_EXPIRED");
         return -1;
@@ -102,6 +105,7 @@ static int _real_confirm(int verify_result)
         SSL_LOG("! fail ! self-signed or not signed by a trusted CA");
         return -1;
     }
+
 #endif
 
     return 0;
@@ -112,18 +116,22 @@ static int _ssl_parse_crt(mbedtls_x509_crt *crt)
     char buf[1024];
     mbedtls_x509_crt *local_crt = crt;
     int i = 0;
+
     while (local_crt) {
         mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", local_crt);
         {
             char str[512];
             const char *start, *cur;
             start = buf;
+
             for (cur = buf; *cur != '\0'; cur++) {
                 if (*cur == '\n') {
                     size_t len = cur - start + 1;
+
                     if (len > 511) {
                         len = 511;
                     }
+
                     memcpy(str, start, len);
                     str[len] = '\0';
                     start = cur + 1;
@@ -135,16 +143,17 @@ static int _ssl_parse_crt(mbedtls_x509_crt *crt)
         local_crt = local_crt->next;
         i++;
     }
+
     return i;
 }
 
 static int _ssl_client_init(mbedtls_ssl_context *ssl,
-                         mbedtls_net_context *tcp_fd,
-                         mbedtls_ssl_config *conf,
-                         mbedtls_x509_crt *crt509_ca, const char *ca_crt, size_t ca_len,
-                         mbedtls_x509_crt *crt509_cli, const char *cli_crt, size_t cli_len,
-                         mbedtls_pk_context *pk_cli, const char *cli_key, size_t key_len,  const char *cli_pwd, size_t pwd_len
-                        )
+                            mbedtls_net_context *tcp_fd,
+                            mbedtls_ssl_config *conf,
+                            mbedtls_x509_crt *crt509_ca, const char *ca_crt, size_t ca_len,
+                            mbedtls_x509_crt *crt509_cli, const char *cli_crt, size_t cli_len,
+                            mbedtls_pk_context *pk_cli, const char *cli_key, size_t key_len,  const char *cli_pwd, size_t pwd_len
+                           )
 {
     int ret = -1;
 
@@ -164,12 +173,14 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
      */
 
     SSL_LOG("Loading the CA root certificate ...");
+
     if (NULL != ca_crt) {
         if (0 != (ret = mbedtls_x509_crt_parse(crt509_ca, (const unsigned char *)ca_crt, ca_len))) {
             SSL_LOG(" failed ! x509parse_crt returned -0x%04x", -ret);
             return ret;
         }
     }
+
     _ssl_parse_crt(crt509_ca);
     SSL_LOG(" ok (%d skipped)", ret);
 
@@ -180,6 +191,7 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
     mbedtls_x509_crt_init(crt509_cli);
     mbedtls_pk_init(pk_cli);
 #endif
+
     if (cli_crt != NULL && cli_key != NULL) {
 #if defined(MBEDTLS_CERTS_C)
         SSL_LOG("start prepare client cert .");
@@ -190,6 +202,7 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
             SSL_LOG("MBEDTLS_CERTS_C not defined.");
         }
 #endif
+
         if (ret != 0) {
             SSL_LOG(" failed!  mbedtls_x509_crt_parse returned -0x%x\n", -ret);
             return ret;
@@ -210,6 +223,7 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
             return ret;
         }
     }
+
 #endif /* MBEDTLS_X509_CRT_PARSE_C */
 
     return 0;
@@ -224,8 +238,10 @@ int utils_network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, int
     char            err_str[33];
 
     mbedtls_ssl_conf_read_timeout(&(pTlsData->conf), timeout_ms);
+
     while (readLen < len) {
         ret = mbedtls_ssl_read(&(pTlsData->ssl), (unsigned char *)(buffer + readLen), (len - readLen));
+
         if (ret > 0) {
             readLen += ret;
             net_status = 0;
@@ -242,7 +258,7 @@ int utils_network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, int
                        || (MBEDTLS_ERR_SSL_CONN_EOF == ret)
                        || (MBEDTLS_ERR_SSL_SESSION_TICKET_EXPIRED == ret)
                        //|| (MBEDTLS_ERR_SSL_NON_FATAL == ret)
-                       ) {
+                      ) {
                 // read already complete
                 // if call mbedtls_ssl_read again, it will return 0 (means EOF)
 
@@ -266,6 +282,7 @@ int utils_network_ssl_write(TLSDataParams_t *pTlsData, const char *buffer, int l
 
     while (writtenLen < len) {
         ret = mbedtls_ssl_write(&(pTlsData->ssl), (unsigned char *)(buffer + writtenLen), (len - writtenLen));
+
         if (ret > 0) {
             writtenLen += ret;
             continue;
@@ -289,11 +306,13 @@ void utils_network_ssl_disconnect(TLSDataParams_t *pTlsData)
     mbedtls_net_free(&(pTlsData->fd));
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
     mbedtls_x509_crt_free(&(pTlsData->cacertl));
+
     if ((pTlsData->pkey).pk_info != NULL) {
         SSL_LOG("need free client crt&key");
         mbedtls_x509_crt_free(&(pTlsData->clicert));
         mbedtls_pk_free(&(pTlsData->pkey));
     }
+
 #endif
     mbedtls_ssl_free(&(pTlsData->ssl));
     mbedtls_ssl_config_free(&(pTlsData->conf));
@@ -323,13 +342,14 @@ int TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const char *p
                       const char *client_pwd, size_t client_pwd_len)
 {
     int ret = -1;
+
     /*
      * 0. Init
      */
     if (0 != (ret = _ssl_client_init(&(pTlsData->ssl), &(pTlsData->fd), &(pTlsData->conf),
-                                         &(pTlsData->cacertl), ca_crt, ca_crt_len,
-                                         &(pTlsData->clicert), client_crt, client_crt_len,
-                                         &(pTlsData->pkey), client_key, client_key_len, client_pwd, client_pwd_len))) {
+                                     &(pTlsData->cacertl), ca_crt, ca_crt_len,
+                                     &(pTlsData->clicert), client_crt, client_crt_len,
+                                     &(pTlsData->pkey), client_key, client_key_len, client_pwd, client_pwd_len))) {
         SSL_LOG(" failed ! ssl_client_init returned -0x%04x", -ret);
         return ret;
     }
@@ -338,16 +358,19 @@ int TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const char *p
      * 1. Start the connection
      */
     SSL_LOG("Connecting to /%s/%s...", addr, port);
+
     if (0 != (ret = mbedtls_net_connect(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP))) {
         SSL_LOG(" failed ! net_connect returned -0x%04x", -ret);
         return ret;
     }
+
     SSL_LOG(" ok");
 
     /*
      * 2. Setup stuff
      */
     SSL_LOG("  . Setting up the SSL/TLS structure...");
+
     if ((ret = mbedtls_ssl_config_defaults(&(pTlsData->conf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM,
                                            MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
         SSL_LOG(" failed! mbedtls_ssl_config_defaults returned %d", ret);
@@ -377,6 +400,7 @@ int TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const char *p
         SSL_LOG(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n", ret);
         return ret;
     }
+
 #endif
     mbedtls_ssl_conf_rng(&(pTlsData->conf), _ssl_random, NULL);
     mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, NULL);
@@ -386,6 +410,7 @@ int TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const char *p
         SSL_LOG("failed! mbedtls_ssl_setup returned %d", ret);
         return ret;
     }
+
     mbedtls_ssl_set_hostname(&(pTlsData->ssl), addr);
     mbedtls_ssl_set_bio(&(pTlsData->ssl), &(pTlsData->fd), mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
 
@@ -400,15 +425,18 @@ int TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const char *p
             return ret;
         }
     }
+
     SSL_LOG(" ok");
     /*
      * 5. Verify the server certificate
      */
     SSL_LOG("  . Verifying peer X.509 certificate..");
+
     if (0 != (ret = _real_confirm(mbedtls_ssl_get_verify_result(&(pTlsData->ssl))))) {
         SSL_LOG(" failed  ! verify result not confirmed.");
         return ret;
     }
+
     // n->my_socket = (int)((n->tlsdataparams.fd).fd);
     // WRITE_IOT_DEBUG_LOG("my_socket=%d", n->my_socket);
 
@@ -444,14 +472,15 @@ int32_t HAL_SSL_Destroy(uintptr_t handle)
 }
 
 uintptr_t HAL_SSL_Establish(const char *host,
-                                      uint16_t port,
-                                      const char *ca_crt,
-                                      size_t ca_crt_len)
+                            uint16_t port,
+                            const char *ca_crt,
+                            size_t ca_crt_len)
 {
     char port_str[6];
     TLSDataParams_pt pTlsData;
 
     pTlsData = malloc(sizeof(TLSDataParams_t));
+
     if (NULL == pTlsData) {
         return (uintptr_t)NULL;
     }
@@ -461,10 +490,12 @@ uintptr_t HAL_SSL_Establish(const char *host,
     if (0 != TLSConnectNetwork(pTlsData, host, port_str, ca_crt, ca_crt_len, NULL, 0, NULL, 0, NULL, 0)) {
         mbedtls_x509_crt_free(&(pTlsData->cacertl));
         mbedtls_x509_crt_free(&(pTlsData->clicert));
+
         if (pTlsData->ssl.hostname) {
             mbedtls_free(pTlsData->ssl.hostname);
             pTlsData->ssl.hostname = NULL;
         }
+
         free(pTlsData);
         return 0;
     }

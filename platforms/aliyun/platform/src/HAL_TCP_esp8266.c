@@ -95,6 +95,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
         }
 
         fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
+
         if (fd < 0) {
             ESP_LOGE(TAG, "create socket error");
             rc = 0;
@@ -116,6 +117,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     } else {
         ESP_LOGI(TAG, "success to establish tcp, fd=%d", rc);
     }
+
     freeaddrinfo(addrInfoList);
 
     return (uintptr_t)rc;
@@ -128,12 +130,14 @@ int HAL_TCP_Destroy(uintptr_t fd)
 
     //Shutdown both send and receive operations.
     rc = shutdown((int) fd, 2);
+
     if (0 != rc) {
         ESP_LOGE(TAG, "shutdown error");
         return -1;
     }
 
     rc = close((int) fd);
+
     if (0 != rc) {
         ESP_LOGE(TAG, "closesocket error");
         return -1;
@@ -167,6 +171,7 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
             timeout.tv_usec = (t_left % 1000) * 1000;
 
             ret = select(fd + 1, NULL, &sets, NULL, &timeout);
+
             if (ret > 0) {
                 if (0 == FD_ISSET(fd, &sets)) {
                     ESP_LOGI(TAG, "Should NOT arrive");
@@ -175,32 +180,33 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
                     continue;
                 }
             } else if (0 == ret) {
-                ESP_LOGI(TAG,"select-write timeout %d", (int)fd);
+                ESP_LOGI(TAG, "select-write timeout %d", (int)fd);
                 break;
             } else {
                 if (EINTR == errno) {
-                    ESP_LOGI(TAG,"EINTR be caught");
+                    ESP_LOGI(TAG, "EINTR be caught");
                     continue;
                 }
 
-                ESP_LOGE(TAG,"select-write fail");
+                ESP_LOGE(TAG, "select-write fail");
                 break;
             }
         }
 
         if (ret > 0) {
             ret = send(fd, buf + len_sent, len - len_sent, 0);
+
             if (ret > 0) {
                 len_sent += ret;
             } else if (0 == ret) {
-                ESP_LOGI(TAG,"No data be sent");
+                ESP_LOGI(TAG, "No data be sent");
             } else {
                 if (EINTR == errno) {
-                    ESP_LOGI(TAG,"EINTR be caught");
+                    ESP_LOGI(TAG, "EINTR be caught");
                     continue;
                 }
 
-                ESP_LOGE(TAG,"send fail");
+                ESP_LOGE(TAG, "send fail");
                 break;
             }
         }
@@ -224,9 +230,11 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
 
     do {
         t_left = _esp32_time_left(t_end, _esp32_get_time_ms());
+
         if (0 == t_left) {
             break;
         }
+
         FD_ZERO(&sets);
         FD_SET(fd, &sets);
 
@@ -234,27 +242,30 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
         timeout.tv_usec = (t_left % 1000) * 1000;
 
         ret = select(fd + 1, &sets, NULL, NULL, &timeout);
+
         if (ret > 0) {
             ret = recv(fd, buf + len_recv, len - len_recv, 0);
+
             if (ret > 0) {
                 len_recv += ret;
             } else if (0 == ret) {
-                ESP_LOGE(TAG,"connection is closed");
+                ESP_LOGE(TAG, "connection is closed");
                 err_code = -1;
                 break;
             } else {
                 if (EINTR == errno) {
-                    ESP_LOGI(TAG,"EINTR be caught");
+                    ESP_LOGI(TAG, "EINTR be caught");
                     continue;
                 }
-                ESP_LOGE(TAG,"send fail");
+
+                ESP_LOGE(TAG, "send fail");
                 err_code = -2;
                 break;
             }
         } else if (0 == ret) {
             break;
         } else {
-            ESP_LOGE(TAG,"select-recv fail");
+            ESP_LOGE(TAG, "select-recv fail");
             err_code = -2;
             break;
         }

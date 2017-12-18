@@ -32,14 +32,14 @@
 #include "iot_import.h"
 
 
-int _getpid_r (struct _reent *par)
+int _getpid_r(struct _reent *par)
 {
-    
+
 }
 
-int _kill_r (struct _reent *a, int b, int c)
+int _kill_r(struct _reent *a, int b, int c)
 {
-    
+
 }
 
 void mygettimeofday(struct timeval *tv, void *tz)
@@ -57,17 +57,17 @@ void *HAL_MutexCreate(void)
 
 void HAL_MutexDestroy(_IN_ void *mutex)
 {
-    
+
 }
 
 void HAL_MutexLock(_IN_ void *mutex)
 {
-    
+
 }
 
 void HAL_MutexUnlock(_IN_ void *mutex)
 {
-    
+
 }
 
 void *HAL_Malloc(_IN_ uint32_t size)
@@ -98,7 +98,8 @@ void HAL_SleepMs(_IN_ uint32_t ms)
     if ((ms > 0) && (ms < portTICK_RATE_MS)) {
         ms = portTICK_RATE_MS;
     }
-    vTaskDelay(ms/portTICK_RATE_MS);
+
+    vTaskDelay(ms / portTICK_RATE_MS);
 }
 #if 0
 void HAL_Printf(_IN_ const char *fmt, ...)
