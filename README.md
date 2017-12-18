@@ -19,15 +19,15 @@
 本文基于 linux 环境和 windows 环境，介绍 ESP8266 对接阿里云平台的具体流程，供读者参考。
 
 # <span id = "hardwareprepare">二：硬件准备</span>
-- **linux 环境** 或 **windows 环境**
+- **linux 环境** 或 **windows 环境**  
 用来编译&烧写&运行等操作的必须环境。  
 
-- **ESP8266 设备**
+- **ESP8266 设备**  
 ESP8266 设备包括 [ESP8266芯片](http://espressif.com/zh-hans/products/hardware/esp8266ex/overview)，[ESP8266模组ESP-WROOM-02](http://espressif.com/zh-hans/products/hardware/esp-wroom-02/overview)，[ESP8266开发板ESP-Launcher](http://espressif.com/zh-hans/products/hardware/development-boards)等。如:  
 
 ![esp-launcher](_static/p1.png)
 
-- **USB 线**
+- **USB 线**  
 连接 PC 和 ESP8266，用来烧写/下载程序，查看 log 等作用。
 
 # <span id = "aliyunprepare">三：阿里云平台准备</span>
@@ -35,18 +35,16 @@ ESP8266 设备包括 [ESP8266芯片](http://espressif.com/zh-hans/products/hardw
 product key, device name, device secret 将在 6.1.1 节用到。
 
 # <span id = "compileprepare">四：环境搭建</span>
-**如果您熟悉ESP8266开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录。需要您结合官方的相关文档来理解。如您需阅读[ESP8266 快速入门指南](http://espressif.com/zh-hans/support/download/overview)文档等。**  
+**如果您熟悉ESP8266开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读[ESP8266 快速入门指南](http://espressif.com/zh-hans/support/download/overview)文档等。**  
 
 ## 4.1 编译器环境搭建
-根据你实际环境选择步骤 4.1.1 或 4.1.2  
-
-### 4.1.1 linux 系统
-根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK) 中第二步 **Requirements**，下载并编译整个 esp-open-sdk。  
+**linux 系统:**  
+根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK)中第二步 **Requirements**，下载并编译整个 esp-open-sdk。  
 esp-open-sdk 中主要包含 ESP8266 SDK([ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK) 和 [ESP8266_NONOS_SDK](https://github.com/espressif/ESP8266_NONOS_SDK))的编译器 xtensa-lx106-elf， 以及 ESP SDK(ESP SDK 包括 esp-idf, ESP8266 SDK等) 的烧写工具 esptool。  
 **注意**：编译 esp-open-sdk 过程中，国内可能会比较慢，挂载 VPN 会快一些。  
 
-### 4.1.2 windows 系统
-你有两种方式 a) 和 b) 获取编译器，推荐使用 a)  
+**windows 系统:**  
+你有两种方式 a) 或 b) 获取编译器，推荐使用 a)  
 a) 下载包含有编译器的 cygwin  
 [下载链接](https://pan.baidu.com/s/1pKJJ97H)  
 下载并解压 cygwin， cygwin 为用户贴心准备了 windows 下的 linux 环境和 ESP8266 的编译器 xtensa-lx106-elf。  
@@ -56,14 +54,14 @@ b) 下载虚拟机 && 下载包含有编译器的 lubuntu 镜像
 根据官方的 [ESP8266 SDK 入门指南](http://espressif.com/zh-hans/support/download/documents?keys=&field_type_tid%5B%5D=14) 中 3.3 节来获取编译器  
 
 ## 4.2 烧录工具/下载工具获取
-linux 系统：  
-烧录工具位于 4.1.1 中 esp-open-sdk/esptool/esptool.py  
+**linux 系统：**  
+烧录工具位于 4.1节中 esp-open-sdk/esptool/esptool.py  
 烧录方式参考命令:  
 ```
 $ esp-open-sdk/esptool/esptool.py --help
 ```
 
-windows 系统：  
+**windows 系统：**  
 烧录工具链接：[Flash 下载工具(ESP8266 & ESP32)](http://espressif.com/zh-hans/support/download/other-tools)  
 烧录方式参考 [ESP8266 SDK 入门指南](http://espressif.com/zh-hans/support/download/documents?keys=&field_type_tid%5B%5D=14) 中第六节下载固件  
 
