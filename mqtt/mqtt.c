@@ -233,7 +233,6 @@ int mqtt_client(void)
 
             /* handle the MQTT packet received from TCP or SSL connection */
             IOT_MQTT_Yield(pclient, 200);
-
             HAL_SleepMs(3000);
         } else {
 

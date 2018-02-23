@@ -36,6 +36,7 @@ extern "C" {
 #define _IN_            /**< indicate that this is an input parameter. */
 #define _OU_            /**< indicate that this is an output parameter. */
 
+#define TIME_DIFF_MS(_end, _start)  ((uint32_t)(((_end).tv_sec - (_start).tv_sec) * 1000 + (_end.tv_usec - _start.tv_usec)/1000))
 
 /*********************************** mutex interface ***********************************/
 

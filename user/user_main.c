@@ -172,6 +172,7 @@ void user_init(void)
     extern unsigned int max_content_len;    // maxium fragment length in bytes, more info see as RFC 6066: part 4
     max_content_len = 4 * 1024;
 
+    hal_micros_set_default_time();  // startup millisecond timer
     os_printf("SDK version:%s \n", system_get_sdk_version());
     os_printf("\n******************************************  \n  SDK compile time:%s %s\n******************************************\n\n", __DATE__, __TIME__);
     IOT_OpenLog("mqtt");

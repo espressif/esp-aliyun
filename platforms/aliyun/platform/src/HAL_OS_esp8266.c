@@ -28,9 +28,12 @@
 #include <unistd.h>
 // #include <sys/time.h>
 #include "freertos/FreeRTOS.h"
-
+#include "esp_timer.h"
 #include "iot_import.h"
 
+static os_timer_t hal_micros_overflow_timer;
+static uint32 hal_micros_at_last_overflow_tick = 0;
+static uint32 hal_micros_overflow_count = 0;
 
 int _getpid_r(struct _reent *par)
 {
@@ -42,13 +45,52 @@ int _kill_r(struct _reent *a, int b, int c)
 
 }
 
-void mygettimeofday(struct timeval *tv, void *tz)
+static void hal_micros_overflow_tick(void * arg)
 {
-    struct _reent r;
-    _gettimeofday_r(&r, tv, tz);
+    uint32 m = system_get_time();
+    if (m < hal_micros_at_last_overflow_tick)
+        hal_micros_overflow_count ++;
 
+    hal_micros_at_last_overflow_tick = m;
 }
 
+void hal_micros_set_default_time(void)
+{
+    os_timer_disarm(&hal_micros_overflow_timer);
+    os_timer_setfn(&hal_micros_overflow_timer, (os_timer_func_t *)hal_micros_overflow_tick, 0);
+    os_timer_arm(&hal_micros_overflow_timer, 60 * 1000, 1);
+}
+
+unsigned long hal_millis(void)
+{
+    uint32 m = system_get_time();
+    uint32 c = hal_micros_overflow_count + ((m < hal_micros_at_last_overflow_tick) ? 1 : 0);
+    return c * 4294967 + m / 1000;
+}
+
+void mygettimeofday(struct timeval *tv, void *tz);
+
+/**
+ * @brief  gain millisecond time
+ * gettimeofday in libcirom.a cannot get a accuracy time, redefine it and for time calculation
+ *
+ * */
+void mygettimeofday(struct timeval *tv, void *tz)
+{
+    uint32 current_time_us = system_get_time();
+    if(tv == NULL) {
+        return;
+    }
+
+    if (tz != NULL) {
+        tv->tv_sec = *(time_t*)tz + current_time_us / 1000000;
+    } else {
+        tv->tv_sec = current_time_us / 1000000;
+    }
+
+    tv->tv_usec = current_time_us % 1000000;
+
+}
 
 void *HAL_MutexCreate(void)
 {
