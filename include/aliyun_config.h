@@ -62,8 +62,6 @@ typedef enum {
 
 extern int got_ip_flag;   // 0: without ip , 1: got ip
 
-#define MQTT_DIRECT
-
 #if 1
 #define EXAMPLE_TRACE(fmt, args...)  \
     do { \
