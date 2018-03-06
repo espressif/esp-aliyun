@@ -1533,7 +1533,7 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
 {
     unsigned int packetType;
     int rc = SUCCESS_RETURN;
-    ////printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     if (!c) {
         return FAIL_RETURN;
     }
@@ -1564,17 +1564,14 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
     HAL_MutexLock(c->lock_generic);
     c->ping_mark = 0;
     HAL_MutexUnlock(c->lock_generic);
-    //printf("file:%s function:%s line:%d heap size:%d type:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size(), packetType);
+
     switch (packetType) {
         case CONNACK: {
             log_debug("CONNACK");
-            printf("CONNACK file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
-
             break;
         }
         case PUBACK: {
             log_debug("PUBACK");
-            printf("PUBACK file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             rc = iotx_mc_handle_recv_PUBACK(c);
             if (SUCCESS_RETURN != rc) {
                 log_err("recvPubackProc error,result = %d", rc);
@@ -1584,7 +1581,6 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
         }
         case SUBACK: {
             log_debug("SUBACK");
-            printf("SUBACK file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             rc = iotx_mc_handle_recv_SUBACK(c);
             if (SUCCESS_RETURN != rc) {
                 log_err("recvSubAckProc error,result = %d", rc);
@@ -1593,7 +1589,6 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
         }
         case PUBLISH: {
             log_debug("PUBLISH");
-            printf("PUBLISH file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             // HEXDUMP_DEBUG(c->buf_read, 32);
 
             rc = iotx_mc_handle_recv_PUBLISH(c);
@@ -1605,7 +1600,6 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
         }
         case UNSUBACK: {
             rc = iotx_mc_handle_recv_UNSUBACK(c);
-            printf("UNSUBACK file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             if (SUCCESS_RETURN != rc) {
                 log_err("recvUnsubAckProc error,result = %d", rc);
             }
@@ -1614,12 +1608,10 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
         case PINGRESP: {
             rc = SUCCESS_RETURN;
             log_info("receive ping response!");
-            printf("PINGRESP file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             break;
         }
         default:
             log_err("INVALID TYPE");
-            printf("WTF type:%d file:%s function:%s line:%d heap size:%d\n", packetType, __FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
             return FAIL_RETURN;
     }
 
@@ -1634,7 +1626,6 @@ static int iotx_mc_check_state_normal(iotx_mc_client_t *c)
     if (!c) {
         return 0;
     }
-    //printf("file:%s function:%s line:%d heap size:%d state:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size(),iotx_mc_get_client_state(c));
     if (iotx_mc_get_client_state(c) == IOTX_MC_STATE_CONNECTED) {
         return 1;
     }
@@ -2257,9 +2248,7 @@ static int iotx_mc_connect(iotx_mc_client_t *pClient)
     }
 
     /*Establish TCP or TLS connection*/
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
     rc = pClient->ipstack->connect(pClient->ipstack);
-    //printf("file:%s function:%s line:%d heap size:%d rc:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size(), rc);
     if (SUCCESS_RETURN != rc) {
         pClient->ipstack->disconnect(pClient->ipstack);
         log_err("TCP or TLS Connection failed");
@@ -2365,21 +2354,19 @@ static int iotx_mc_handle_reconnect(iotx_mc_client_t *pClient)
 // disconnect
 static int iotx_mc_disconnect(iotx_mc_client_t *pClient)
 {
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
     if (NULL == pClient) {
         return NULL_VALUE_ERROR;
     }
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
 //    if (!iotx_mc_check_state_normal(pClient)) {
 //        return SUCCESS_RETURN;
 //    }
 
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
     (void)MQTTDisconnect(pClient);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     /*close tcp/ip socket or free tls resources*/
     pClient->ipstack->disconnect(pClient->ipstack);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     iotx_mc_set_client_state(pClient, IOTX_MC_STATE_INITIALIZED);
 
     log_info("mqtt disconnect!");
@@ -2413,9 +2400,9 @@ static int iotx_mc_release(iotx_mc_client_t *pClient)
 
     // iotx_delete_thread(pClient);
     HAL_SleepMs(100);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     iotx_mc_disconnect(pClient);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     iotx_mc_set_client_state(pClient, IOTX_MC_STATE_INVALID);
     HAL_SleepMs(100);
 
@@ -2473,7 +2460,7 @@ static int iotx_mc_keepalive_sub(iotx_mc_client_t *pClient)
 
     // update to next time sending MQTT keep-alive
     utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
-    printf("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr\n");
+
     rc = MQTTKeepalive(pClient);
     if (SUCCESS_RETURN != rc) {
         if (rc == MQTT_NETWORK_ERROR) {
@@ -2508,23 +2495,23 @@ void *IOT_MQTT_Construct(iotx_mqtt_param_t *pInitParams)
     STRING_PTR_SANITY_CHECK(pInitParams->client_id, NULL);
     STRING_PTR_SANITY_CHECK(pInitParams->username, NULL);
     STRING_PTR_SANITY_CHECK(pInitParams->password, NULL);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     pclient = (iotx_mc_client_t *)LITE_malloc(sizeof(iotx_mc_client_t));
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     if (NULL == pclient) {
         log_err("not enough memory.");
         return NULL;
     }
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     err = iotx_mc_init(pclient, pInitParams);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     if (SUCCESS_RETURN != err) {
         LITE_free(pclient);
         return NULL;
     }
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     err = iotx_mc_connect(pclient);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     if (SUCCESS_RETURN != err) {
         iotx_mc_release(pclient);
         LITE_free(pclient);
@@ -2538,12 +2525,12 @@ int IOT_MQTT_Destroy(void **phandler)
 {
     POINTER_SANITY_CHECK(phandler, NULL_VALUE_ERROR);
     POINTER_SANITY_CHECK(*phandler, NULL_VALUE_ERROR);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     iotx_mc_release((iotx_mc_client_t *)(*phandler));
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
 
     LITE_free(*phandler);
-    //printf("file:%s function:%s line:%d heap size:%d\n",__FILE__,__FUNCTION__,__LINE__, system_get_free_heap_size());
+
     *phandler = NULL;
 
     return SUCCESS_RETURN;

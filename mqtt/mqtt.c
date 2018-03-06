@@ -88,11 +88,8 @@ void event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg)
         break;
 
     case IOTX_MQTT_EVENT_PUBLISH_RECVEIVED:
-        EXAMPLE_TRACE("topic message arrived but without any related handle: topic=%.*s, topic_msg=%.*s",
-                      topic_info->topic_len,
-                      topic_info->ptopic,
-                      topic_info->payload_len,
-                      topic_info->payload);
+        print_debug(topic_info->ptopic, topic_info->topic_len, "event topic");
+        print_debug(topic_info->payload, topic_info->payload_len, "event payload");
         break;
 
     default:
@@ -106,18 +103,8 @@ static void _demo_message_arrive(void *pcontext, void *pclient, iotx_mqtt_event_
     iotx_mqtt_topic_info_pt ptopic_info = (iotx_mqtt_topic_info_pt) msg->msg;
 
     // print topic name and topic message
-    EXAMPLE_TRACE("----");
-    EXAMPLE_TRACE("Topic: '%.*s' (Length: %d)",
-                  ptopic_info->topic_len,
-                  ptopic_info->ptopic,
-                  ptopic_info->topic_len);
-    print_debug(ptopic_info->ptopic, ptopic_info->topic_len, "topic");
-    print_debug(ptopic_info->payload, ptopic_info->payload_len, "payload");
-    EXAMPLE_TRACE("Payload: '%.*s' (Length: %d)",
-                  ptopic_info->payload_len,
-                  ptopic_info->payload,
-                  ptopic_info->payload_len);
-    EXAMPLE_TRACE("----");
+    print_debug(ptopic_info->ptopic, ptopic_info->topic_len, "arrive topic");
+    print_debug(ptopic_info->payload, ptopic_info->payload_len, "arrive payload");
 }
 
 int mqtt_client(void)

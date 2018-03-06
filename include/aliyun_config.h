@@ -65,7 +65,7 @@ extern int got_ip_flag;   // 0: without ip , 1: got ip
 #if 1
 #define EXAMPLE_TRACE(fmt, args...)  \
     do { \
-        os_printf("%s|%03d :: ", __func__, __LINE__); \
+        os_printf("%s|%d ", __func__, __LINE__); \
         os_printf(fmt, ##args); \
         os_printf("%s", "\r\n"); \
     } while(0)
