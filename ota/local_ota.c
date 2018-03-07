@@ -255,42 +255,6 @@ system_upgrade_deinit(void)
     return;
 }
 
-void print_debug(const char *data, const int len, const char *note)
-{
-#define COUNT_BYTE_AND_NEW_LINE 0
-#define ALL_BINARY_SHOW 0
-    os_printf("\n********** %s [len:%d] start addr:%p **********\n", note, len, data);
-    int i = 0;
-
-    for (i = 0; i < len; ++i) {
-#if !(ALL_BINARY_SHOW)
-
-        if (data[i] < 33 || data[i] > 126) {
-            if (i > 0 && (data[i - 1] >= 33 && data[i - 1] <= 126)) {
-                os_printf(" ");
-            }
-
-            os_printf("%02x ", data[i]);
-        } else {
-            os_printf("%c", data[i]);
-        }
-
-#else
-        os_printf("%02x ", data[i]);
-#endif
-
-#if COUNT_BYTE_AND_NEW_LINE
-
-        if ((i + 1) % 32 == 0) {
-            os_printf("    | %d Bytes\n", i + 1);
-        }
-
-#endif
-    }
-
-    os_printf("\n---------- %s End ----------\n", note);
-}
-
 /******************************************************************************
  * FunctionName : upgrade_download
  * Description  : parse http response ,and download remote data and write in flash
