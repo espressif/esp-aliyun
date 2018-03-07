@@ -26,7 +26,7 @@
 #include "freertos/task.h"
 #include "esp_common.h"
 #include "esp_wifi.h"
-
+#include "uart.h"
 #include "apps/sntp.h"
 
 #include "iot_export.h"
@@ -169,6 +169,10 @@ void heap_check_task(void *para)
 
 void user_init(void)
 {
+    // default baudrate: 74880, change it if necessary
+//    UART_SetBaudrate(0, 115200);
+//    UART_SetBaudrate(1, 115200);
+
     extern unsigned int max_content_len;    // maxium fragment length in bytes, more info see as RFC 6066: part 4
     max_content_len = 4 * 1024;
 

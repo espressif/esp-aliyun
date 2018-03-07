@@ -72,6 +72,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-lfreertos	\
 	-llwip	\
 	-lssl	\
+	-ldriver \
 	-lmirom\
 	-lmbedtls               \
     -lopenssl               \
