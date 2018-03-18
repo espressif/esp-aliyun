@@ -33,7 +33,7 @@ extern "C" {
 #define IOTX_MC_SUB_NUM_MAX                     (10)
 
 /* maximum republish elements in list */
-#define IOTX_MC_REPUB_NUM_MAX                   (2)
+#define IOTX_MC_REPUB_NUM_MAX                   (20)
 
 #if defined(__cplusplus)
 }

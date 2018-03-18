@@ -146,7 +146,12 @@ void    LITE_set_loglevel(int level);
 #else
 #define log_emerg(arg...)
 #define log_crit(arg...)
-#define log_err(arg...)
+#define log_err(format, ...) \
+        do { \
+            printf("[log_err] %s(%d): "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+            ;\
+        }while(0);
+
 #define log_warning(arg...)
 #define log_info(arg...)
 #define log_debug(format, ...)
