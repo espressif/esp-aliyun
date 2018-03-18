@@ -248,15 +248,17 @@ do_exit:
 }
 
 
-void mqtt_proc(void *pvParameter)
+void mqtt_task(void *pvParameter)
 {
+    printf("\nMQTT task started...\n");
+
     while (1) { // reconnect to tls
         while (!got_ip_flag) {
             vTaskDelay(TASK_CYCLE / portTICK_RATE_MS);
         }
 
-        os_printf("[ALIYUN] MQTT client example begin, free heap size:%d\n", system_get_free_heap_size());
+        printf("MQTT client example begin, free heap size:%d\n", system_get_free_heap_size());
         mqtt_client();
-        os_printf("[ALIYUN] MQTT client example end, free heap size:%d\n", system_get_free_heap_size());
+        printf("MQTT client example end, free heap size:%d\n", system_get_free_heap_size());
     }
 }

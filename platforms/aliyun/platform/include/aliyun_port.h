@@ -42,16 +42,18 @@ void print_debug(const char *data, const int len, const char *note);
 /**
  * @brief  print the fatal error information and cycle it
  *
- * called always like the following:
- * print_error(__FILE__, __FUNCTION__, __LINE__, "note");
- *
- * @param[in]  file: should be '__FILE__'
- * @param[in]  function: shoudl be '__FUNCTION__'
- * @param[in]  line: should be '__LINE__'
- * @param[in]  note: notes for read easily
+ *  usage: same to printf
  *
  * @return noreturn
  * */
-void print_error(const char *file, const char *function, uint32_t line, const char *note);
+
+#define print_error(fmt, args...)  \
+    do { \
+        printf("[error]:");\
+        printf(fmt, ##args); \
+        printf(",heap size:%d%s", system_get_free_heap_size(), "\r\n"); \
+        vTaskDelay(2000 / portTICK_RATE_MS);    \
+    } while(1)
+
 
 #endif

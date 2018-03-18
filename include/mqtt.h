@@ -25,10 +25,8 @@
 #ifndef MQTT_H_
 #define MQTT_H_
 
-void print_debug(const char *data, const int len, const char *note);
-
 void event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg);
 
-void mqtt_proc(void *pvParameter);
+void mqtt_task(void *pvParameter);
 
 #endif

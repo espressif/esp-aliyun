@@ -57,7 +57,7 @@ init_crc_table(void)
     crc_table = (unsigned int *)zalloc(256 * 4);
 
     if (crc_table == NULL) {
-        os_printf("malloc crc table failed\n");
+        printf("malloc crc table failed\n");
         return -1;
     }
 
@@ -101,7 +101,7 @@ calc_img_crc(unsigned int sumlength, unsigned int *img_crc)
     unsigned char *buf = (char *)zalloc(BUFSIZE);
 
     if (buf == NULL) {
-        os_printf("malloc crc buf failed\n");
+        printf("malloc crc buf failed\n");
         free(crc_table);
         return -1;
     }
@@ -115,7 +115,7 @@ calc_img_crc(unsigned int sumlength, unsigned int *img_crc)
         if (0 != (error = spi_flash_read(start_sec * SPI_FLASH_SEC_SIZE + i * CRC_BLOCK_SIZE , (uint32 *)buf, BUFSIZE))) {
             free(crc_table);
             free(buf);
-            os_printf("spi_flash_read error %d\n", error);
+            printf("spi_flash_read error %d\n", error);
             return -1;
         }
 
@@ -126,7 +126,7 @@ calc_img_crc(unsigned int sumlength, unsigned int *img_crc)
         if (0 != (error = spi_flash_read(start_sec * SPI_FLASH_SEC_SIZE + i * CRC_BLOCK_SIZE, (uint32 *)buf, sec_last))) {
             free(crc_table);
             free(buf);
-            os_printf("spi_flash_read error %d\n", error);
+            printf("spi_flash_read error %d\n", error);
             return -1;
         }
 
@@ -142,7 +142,7 @@ calc_img_crc(unsigned int sumlength, unsigned int *img_crc)
 bool ICACHE_FLASH_ATTR
 upgrade_crc_check(uint16 fw_bin_sec , unsigned int sumlength)
 {
-    os_printf("fw_bin_sec %d sumlength %d\n", fw_bin_sec, sumlength);
+    printf("fw_bin_sec %d sumlength %d\n", fw_bin_sec, sumlength);
     int ret;
     unsigned int img_crc;
     unsigned int flash_crc = 0xFF;
@@ -159,9 +159,9 @@ upgrade_crc_check(uint16 fw_bin_sec , unsigned int sumlength)
     }
 
     img_crc = abs(img_crc);
-    os_printf("img_crc = %u\n", img_crc);
+    printf("img_crc = %u\n", img_crc);
     spi_flash_read(start_sec * SPI_FLASH_SEC_SIZE + sumlength - 4, &flash_crc, 4);
-    os_printf("flash_crc = %u\n", flash_crc);
+    printf("flash_crc = %u\n", flash_crc);
 
     if (img_crc == flash_crc) {
         return true;

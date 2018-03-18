@@ -45,11 +45,13 @@ int _kill_r(struct _reent *a, int b, int c)
 
 }
 
-static void hal_micros_overflow_tick(void * arg)
+static void hal_micros_overflow_tick(void *arg)
 {
     uint32 m = system_get_time();
-    if (m < hal_micros_at_last_overflow_tick)
+
+    if (m < hal_micros_at_last_overflow_tick) {
         hal_micros_overflow_count ++;
+    }
 
     hal_micros_at_last_overflow_tick = m;
 }
@@ -78,12 +80,13 @@ void mygettimeofday(struct timeval *tv, void *tz);
 void mygettimeofday(struct timeval *tv, void *tz)
 {
     uint32 current_time_us = system_get_time();
-    if(tv == NULL) {
+
+    if (tv == NULL) {
         return;
     }
 
     if (tz != NULL) {
-        tv->tv_sec = *(time_t*)tz + current_time_us / 1000000;
+        tv->tv_sec = *(time_t *)tz + current_time_us / 1000000;
     } else {
         tv->tv_sec = current_time_us / 1000000;
     }

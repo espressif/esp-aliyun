@@ -21,20 +21,22 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-
 #include "iot_export_ota.h"
-
 #include "esp_common.h"
 #include "lwip/mem.h"
 #include "aliyun_config.h"
 #include "ota.h"
+#include "aliyun_port.h"
 
-LOCAL uint32 totallength = 0;
-LOCAL uint32 sumlength = 0;
-LOCAL bool flash_erased = false;
-LOCAL os_timer_t upgrade_timer;
+uint32 download_length = 0;
+os_timer_t upgrade_timer;
+
+bool http_200_check = false;
+bool resp_body_start = false;
+int content_len = 0;
 
 extern int got_ip_flag;
+struct upgrade_param *upgrade;
 
 struct upgrade_param {
     uint32 fw_bin_addr;
@@ -45,8 +47,6 @@ struct upgrade_param {
     uint8 save[4];
     uint8 *buffer;
 };
-
-LOCAL struct upgrade_param *upgrade;
 
 LOCAL bool OUT_OF_RANGE(uint16 erase_sec)
 {
@@ -75,6 +75,7 @@ LOCAL bool OUT_OF_RANGE(uint16 erase_sec)
     }
 }
 
+
 /******************************************************************************
  * FunctionName : user_upgrade_internal
  * Description  : a
@@ -100,7 +101,7 @@ LOCAL bool system_upgrade_internal(struct upgrade_param *upgrade, uint8 *data, u
             taskENTER_CRITICAL();
 
             if (OUT_OF_RANGE(upgrade->fw_bin_sec_earse)) {
-                os_printf("fw_bin_sec_earse:%d, Out of range\n", upgrade->fw_bin_sec_earse);
+                printf("fw_bin_sec_earse:%d, Out of range\n", upgrade->fw_bin_sec_earse);
                 break;
 
             } else {
@@ -112,7 +113,7 @@ LOCAL bool system_upgrade_internal(struct upgrade_param *upgrade, uint8 *data, u
             vTaskDelay(10 / portTICK_RATE_MS);
         }
 
-        os_printf("flash erase over\n");
+        printf("flash erase over\n");
         return true;
     }
 
@@ -128,17 +129,17 @@ LOCAL bool system_upgrade_internal(struct upgrade_param *upgrade, uint8 *data, u
     if (upgrade->extra <= 4) {
         memcpy(upgrade->save, upgrade->buffer + len, upgrade->extra);
     } else {
-        os_printf("ERR3:arr_overflow,%u,%d\n", __LINE__, upgrade->extra);
+        printf("ERR3:arr_overflow,%u,%d\n", __LINE__, upgrade->extra);
     }
 
     do {
         if (upgrade->fw_bin_addr + len >= (upgrade->fw_bin_sec + upgrade->fw_bin_sec_num) * SPI_FLASH_SEC_SIZE) {
-            os_printf("spi_flash_write exceed\n");
+            printf("spi_flash_write exceed\n");
             break;
         }
 
         if (spi_flash_write(upgrade->fw_bin_addr, (uint32 *)upgrade->buffer, len) != SPI_FLASH_RESULT_OK) {
-            os_printf("spi_flash_write failed\n");
+            printf("spi_flash_write failed\n");
             break;
         }
 
@@ -181,20 +182,20 @@ bool system_upgrade(uint8 *data, uint32 len)
 
 void upgrade_recycle(void)
 {
-    totallength = 0;
-    sumlength = 0;
-    flash_erased = false;
+    printf("upgrade recycle\n");
+    download_length = 0;
+    http_200_check = false;
+    resp_body_start = false;
+    content_len = 0;
 
     system_upgrade_deinit();
-
 
     if (system_upgrade_flag_check() == UPGRADE_FLAG_FINISH) {
         system_upgrade_reboot(); // if need
     }
 
-    vTaskDelete(NULL);
+    return;
 }
-
 
 /******************************************************************************
  * FunctionName : system_upgrade_init
@@ -247,12 +248,74 @@ system_upgrade_deinit(void)
     if (upgrade != NULL) {
         free(upgrade);
         upgrade = NULL;
-    } else {
-
     }
 
-    os_printf("ota end, free heap size:%d\n", system_get_free_heap_size());
+    printf("ota end, free heap size:%d\n", system_get_free_heap_size());
     return;
+}
+
+/*read buffer by byte still delim ,return read bytes counts*/
+static int read_until(char *buffer, char delim, int len)
+{
+//  /*TODO: delim check,buffer check,further: do an buffer length limited*/
+    int i = 0;
+
+    while (buffer[i] != delim && i < len) {
+        ++i;
+    }
+
+    return i + 1;
+}
+
+bool read_past_http_header(char text[], int total_len)
+{
+    /* i means current position */
+    int i = 0, i_read_len = 0;
+    char *ptr = NULL, *ptr2 = NULL;
+    char length_str[32] = {0};
+
+    while (text[i] != 0 && i < total_len) {
+        if (content_len == 0 && (ptr = (char *)strstr(text, "Content-Length")) != NULL) {
+            ptr += 16;
+            ptr2 = (char *)strstr(ptr, "\r\n");
+            memset(length_str, 0, sizeof(length_str));
+            memcpy(length_str, ptr, ptr2 - ptr);
+            content_len = atoi(length_str);
+            printf("parse Content-Length:%d\n", content_len);
+        }
+
+        i_read_len = read_until(&text[i], '\n', total_len);
+
+        // if resolve \r\n line, http header is finished
+        if (i_read_len == 2) {
+            if (content_len == 0) {
+                print_error("did not parse Content-Length item");
+            }
+
+            // erase flash when first flash, for save new bin
+            if (false == system_upgrade(text, content_len)) {
+                system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
+                upgrade_recycle();
+            }
+
+            // the valid left http body length
+            int i_write_len = total_len - (i + 2);
+
+            if (false == system_upgrade(&(text[i + 2]), i_write_len)) {
+                system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
+                upgrade_recycle();
+                print_error("system upgrade error");
+            }
+
+            download_length += i_write_len;
+            printf("first download len:%d\n", download_length);
+            return true;
+        }
+
+        i += i_read_len;
+    }
+
+    return false;
 }
 
 /******************************************************************************
@@ -269,116 +332,67 @@ void upgrade_download(int sta_socket, char *pusrdata, unsigned short length)
     char *ptmp2 = NULL;
     char lengthbuffer[32];
 
-    if (totallength == 0 && (ptr = (char *)strstr(pusrdata, "\r\n\r\n")) != NULL &&
-            (ptr = (char *)strstr(pusrdata, "Content-Length")) != NULL) {
-        ptr = (char *)strstr(pusrdata, "\r\n\r\n");
-        length -= ptr - pusrdata;
-        length -= 4;
-        os_printf("upgrade file download start.\n");
-
-        ptr = (char *)strstr(pusrdata, "Content-Length: ");
-
-        if (ptr != NULL) {
-            ptr += 16;
-            ptmp2 = (char *)strstr(ptr, "\r\n");
-
-            if (ptmp2 != NULL) {
-                memset(lengthbuffer, 0, sizeof(lengthbuffer));
-                memcpy(lengthbuffer, ptr, ptmp2 - ptr);
-                sumlength = atoi(lengthbuffer);
-
-                if (sumlength > 0) {
-                    if (false == system_upgrade(pusrdata, sumlength)) {
-                        system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-                        goto ota_recycle;
-                    }
-
-                    flash_erased = true;
-                    ptr = (char *)strstr(pusrdata, "\r\n\r\n");
-
-                    if (false == system_upgrade(ptr + 4, length)) {
-                        system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-                        goto ota_recycle;
-                    }
-
-                    totallength += length;
-                    os_printf("sumlength = %d\n", sumlength);
-                    return;
-                }
-            } else {
-                os_printf("sumlength failed\n");
-                system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-                goto ota_recycle;
-            }
-        } else {
-            os_printf("Content-Length: failed\n");
-            system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-            goto ota_recycle;
-        }
-    } else {
-        if (totallength == 0 && sumlength == 0) {
-            os_printf("%s\n", pusrdata);
-            return;
-        }
-
-        totallength += length;
-        os_printf("totallen = %d\n", totallength);
-
-        if (false == system_upgrade(pusrdata, length)) {
-            system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-            goto ota_recycle;
-        }
-
-        if (totallength == sumlength) {
-            os_printf("upgrade file download finished.\n");
-
-            if (upgrade_crc_check(system_get_fw_start_sec(), sumlength) != true) {
-                os_printf("upgrade crc check failed !\n");
-                system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-                goto ota_recycle;
-            }
-
-            system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
-            goto ota_recycle;
-        } else {
-            return;
-        }
+    // first response should include state code:200
+    if (!http_200_check && strstr(pusrdata, "200") == NULL) {
+        print_error("ota url is invalid or bin is not exist");
     }
 
-ota_recycle :
-    os_printf("go to ota recycle\n");
-    close(sta_socket);
-    upgrade_recycle();
+    http_200_check = true;
+
+    if (!resp_body_start) {
+        // deal with http header
+        resp_body_start = read_past_http_header(pusrdata, length);
+        return;
+    }
+
+    // deal with http body
+    // http transmit body more than content-length occasionally
+    // default bin size = content-length, throw up the other http body
+    if (download_length + length > content_len) {
+        length = content_len - download_length;
+        download_length = content_len;
+    } else {
+        download_length += length;
+    }
+
+    printf("downloaded len:%d\n", download_length);
+
+    // save http body(bin) to flash
+    if (false == system_upgrade(pusrdata, length)) {
+        system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
+        upgrade_recycle();
+    }
+
+    return;
 }
 
 /******************************************************************************
- * FunctionName : ota_begin
+ * FunctionName : local_ota_begin
  * Description  : ota_task function
  * Parameters   : task param
  * Returns      : none
 *******************************************************************************/
-void ota_begin()
+void local_ota_begin()
 {
-    int recbytes;
+    int read_bytes;
     int sin_size;
     int sta_socket;
     char recv_buf[1460];
     uint8 user_bin[21] = {0};
     struct sockaddr_in remote_ip;
-    os_printf("Hello, welcome to client!\r\n");
-    os_printf("ota serer addr %s port %d\n", LOCAL_OTA_SERVER_IP, LOCAL_OTA_SERVER_PORT);
+    printf("Hello, welcome to local ota!\r\n");
+    printf("ota server addr %s port %d\n", LOCAL_OTA_SERVER_IP, LOCAL_OTA_SERVER_PORT);
 
     while (1) {
         sta_socket = socket(PF_INET, SOCK_STREAM, 0);
 
         if (-1 == sta_socket) {
-
             close(sta_socket);
-            os_printf("socket fail !\r\n");
+            printf("socket fail !\r\n");
             continue;
         }
 
-        os_printf("socket ok!\r\n");
+        printf("socket ok!\r\n");
         bzero(&remote_ip, sizeof(struct sockaddr_in));
         remote_ip.sin_family = AF_INET;
 
@@ -387,12 +401,13 @@ void ota_begin()
 
         if (0 != connect(sta_socket, (struct sockaddr *)(&remote_ip), sizeof(struct sockaddr))) {
             close(sta_socket);
-            os_printf("connect fail!\r\n");
+            printf("connect fail!\r\n");
             system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
             upgrade_recycle();
+            continue;
         }
 
-        os_printf("connect ok!\r\n");
+        printf("connect ok!\r\n");
 
         if (system_upgrade_userbin_check() == UPGRADE_FW_BIN1) {
             memcpy(user_bin, "user2.2048.new.5.bin", 21);
@@ -411,58 +426,76 @@ void ota_begin()
         int get_len = asprintf(&http_request, GET_FORMAT, user_bin, LOCAL_OTA_SERVER_IP, LOCAL_OTA_SERVER_PORT);
 
         if (get_len < 0) {
-            os_printf("malloc memory failed.\n");
+            printf("malloc memory failed.\n");
             system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
             upgrade_recycle();
+            free(http_request);
+            close(sta_socket);
+            continue;
         }
 
-        printf(http_request);
+        print_debug(http_request, strlen(http_request), "send http request");
 
         if (write(sta_socket, http_request, strlen(http_request) + 1) < 0) {
             close(sta_socket);
-            os_printf("send fail\n");
+            printf("send fail\n");
             free(http_request);
             upgrade_recycle();
+            continue;
         }
 
-        os_printf("send success\n");
+        printf("send success\n");
         free(http_request);
 
-        while ((recbytes = read(sta_socket , recv_buf, 1460)) >= 0) {
-            if (recbytes != 0) {
-                upgrade_download(sta_socket, recv_buf, recbytes);
+        while ((read_bytes = read(sta_socket , recv_buf, 1460)) >= 0) {
+            if (read_bytes > 0) {
+                upgrade_download(sta_socket, recv_buf, read_bytes);
+            } else {
+                printf("peer close socket\n");
+                break;
+            }
+
+            // default bin size equal to content-length
+            if (download_length == content_len && download_length != 0) {
+                printf("upgrade file download finished, bin size:%d\n", download_length);
+
+                if (upgrade_crc_check(system_get_fw_start_sec(), download_length) != true) {
+                    printf("upgrade crc check failed !\n");
+                    system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
+                } else {
+                    printf("bin check crc ok\n");
+                    system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+                }
+
+                upgrade_recycle();
             }
         }
 
-        os_printf("recbytes = %d\n", recbytes);
-
-        if (recbytes < 0) {
-            os_printf("read data fail!\r\n");
-            close(sta_socket);
-            system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
-            upgrade_recycle();
-        }
+        printf("read data fail! ret:%d\r\n", read_bytes);
+        close(sta_socket);
+        system_upgrade_flag_set(UPGRADE_FLAG_IDLE);
+        upgrade_recycle();
     }
 }
 
-// ota main task
-void local_ota_proc(void *pvParameter)
+// local_ota_task
+void local_ota_task(void *pvParameter)
 {
+    printf("\nlocal OTA task started...\n");
 
     while (!got_ip_flag) {
         vTaskDelay(TASK_CYCLE / portTICK_RATE_MS);
-        os_printf("wait for fetching IP...\n");
+        printf("wait for fetching IP...\n");
     }
 
-    os_printf("ota begin, free heap size:%d\n", system_get_free_heap_size());
+    printf("ota begin, free heap size:%d\n", system_get_free_heap_size());
     system_upgrade_flag_set(UPGRADE_FLAG_START);
     system_upgrade_init();
 
-    ota_begin();
+    local_ota_begin();
 
     // OTA timeout
     os_timer_disarm(&upgrade_timer);
     os_timer_setfn(&upgrade_timer, (os_timer_func_t *)upgrade_recycle, NULL);
     os_timer_arm(&upgrade_timer, OTA_TIMEOUT, 0);
-
 }

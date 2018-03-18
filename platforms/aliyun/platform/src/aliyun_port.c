@@ -31,7 +31,7 @@ void print_debug(const char *data, const int len, const char *note)
 {
 #define COUNT_BYTE_AND_NEW_LINE 0
 #define ALL_BINARY_SHOW 0
-    os_printf("\n********** %s [len:%d] start addr:%p **********\n", note, len, data);
+    printf("\n********** %s [len:%d] start addr:%p **********\n", note, len, data);
     int i = 0;
 
     for (i = 0; i < len; ++i) {
@@ -39,34 +39,26 @@ void print_debug(const char *data, const int len, const char *note)
 
         if (data[i] < 33 || data[i] > 126) {
             if (i > 0 && (data[i - 1] >= 33 && data[i - 1] <= 126)) {
-                os_printf(" ");
+                printf(" ");
             }
 
-            os_printf("%02x ", data[i]);
+            printf("%02x ", data[i]);
         } else {
-            os_printf("%c", data[i]);
+            printf("%c", data[i]);
         }
 
 #else
-        os_printf("%02x ", data[i]);
+        printf("%02x ", data[i]);
 #endif
 
 #if COUNT_BYTE_AND_NEW_LINE
 
         if ((i + 1) % 32 == 0) {
-            os_printf("    | %d Bytes\n", i + 1);
+            printf("    | %d Bytes\n", i + 1);
         }
 
 #endif
     }
 
-    os_printf("\n---------- %s End ----------\n", note);
-}
-
-void print_error(const char *file, const char *function, uint32_t line, const char *note)
-{
-    while(1){
-        os_printf("[error:%s]file:%s function:%s line:%u heap size:%d\n", note, file, function, line, system_get_free_heap_size());
-        vTaskDelay(2000 / portTICK_RATE_MS);
-    }
+    printf("\n---------- %s End ----------\n", note);
 }
