@@ -1,5 +1,7 @@
 # TO Delete if release
-bin/upgrade
+bin
+
+iotkit-embedded.pkgs
 
 # Compile intermediate file
 .output
