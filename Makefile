@@ -21,7 +21,8 @@ ifndef PDIR # {
 GEN_IMAGES= eagle.app.v6.out
 GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
-SUBDIRS=    user
+SUBDIRS=    user \
+            components/aliyun/platform
 
 endif # } PDIR
 
@@ -43,8 +44,22 @@ ifeq ($(FLAVOR),release)
     TARGET_LDFLAGS += -g -O0
 endif
 
+# disable compile submodule repeatedly
+dummy: all
+
+ALIYUN_PATH = components/aliyun/iotkit-embedded
+
+aliyun:
+	cp $(ALIYUN_PATH)/src/configs/default_settings.mk $(ALIYUN_PATH)/src/configs/default_settings.mk.bak
+	cp components/aliyun/config/* $(ALIYUN_PATH)/src/configs/
+	make -C $(ALIYUN_PATH) distclean
+	make -C $(ALIYUN_PATH)
+	rm $(ALIYUN_PATH)/src/configs/config.espressif.esp8266
+	mv $(ALIYUN_PATH)/src/configs/default_settings.mk.bak $(ALIYUN_PATH)/src/configs/default_settings.mk
+
 COMPONENTS_eagle.app.v6 = \
-    user/libuser.a
+    user/libuser.a \
+    components/aliyun/platform/libplatform.a
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \

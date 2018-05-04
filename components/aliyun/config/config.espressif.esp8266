@@ -1,0 +1,6 @@
+CROSS_PREFIX = xtensa-lx106-elf-
+
+CONFIG_src/platform =
+CONFIG_sample =
+CONFIG_src/sdk-tests =
+CONFIG_src/tls =
