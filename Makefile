@@ -21,10 +21,7 @@ ifndef PDIR # {
 GEN_IMAGES= eagle.app.v6.out
 GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
-SUBDIRS=    user \
-            platforms	\
-            ota	\
-            mqtt	\
+SUBDIRS=    user
 
 endif # } PDIR
 
@@ -47,10 +44,7 @@ ifeq ($(FLAVOR),release)
 endif
 
 COMPONENTS_eagle.app.v6 = \
-    user/libuser.a  \
-    platforms/libplatforms.a	\
-    ota/libaliyun_ota.a 	\
-    mqtt/libaliyun_mqtt.a 	\
+    user/libuser.a
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \
