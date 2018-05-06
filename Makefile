@@ -26,7 +26,7 @@ SUBDIRS=    user \
 
 endif # } PDIR
 
-LDDIR = $(SDK_PATH)/ld
+LDDIR = ./ld
 
 CCFLAGS += -Os
 
@@ -42,6 +42,34 @@ endif
 
 ifeq ($(FLAVOR),release)
     TARGET_LDFLAGS += -g -O0
+endif
+
+LD_FILE = $(LDDIR)/eagle.app.v6.ld
+
+ifneq ($(app),0)
+    ifneq ($(findstring $(size_map),  6  8  9),)
+      LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).2048.ld
+    else
+      ifeq ($(size_map), 5)
+        LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).2048.ld
+      else
+        ifeq ($(size_map), 4)
+          LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+        else
+          ifeq ($(size_map), 3)
+            LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+          else
+            ifeq ($(size_map), 2)
+              LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+            else
+              ifeq ($(size_map), 0)
+                LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).512.app$(app).ld
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
 endif
 
 # disable compile submodule repeatedly
