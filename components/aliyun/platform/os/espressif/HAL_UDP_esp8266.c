@@ -15,20 +15,11 @@
  * limitations under the License.
  *
  */
-
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 #include <unistd.h>
-#include <pthread.h>
 
+#include <sys/socket.h>
+#include <netdb.h>
 #include "iot_import.h"
 
 void *HAL_UDP_create(char *host, unsigned short port)

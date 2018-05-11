@@ -12,9 +12,11 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
+UP_EXTRACT_DIR = ..
 GEN_LIBS = libplatform.a
+COMPONENTS_libplatform =     \
+    os/espressif/libpf_os.a
 endif
-
 
 #############################################################
 # Configuration i.e. compile options etc.

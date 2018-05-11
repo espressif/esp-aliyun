@@ -15,19 +15,9 @@
  * limitations under the License.
  *
  */
-
-
-
-#include <stdio.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <netinet/tcp.h>
 #include <netdb.h>
+#include <sys/socket.h>
 
 #include "iot_import.h"
 
@@ -35,19 +25,12 @@
     do { \
         HAL_Printf("LINUXSOCK %u %s() | "format"\n", __LINE__, __FUNCTION__, ##__VA_ARGS__);\
         fflush(stdout);\
-    } while(0);
+    } while(0)
 
 
 static uint64_t _linux_get_time_ms(void)
 {
-    struct timeval tv = { 0 };
-    uint64_t time_ms;
-
-    gettimeofday(&tv, NULL);
-
-    time_ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-    return time_ms;
+    return HAL_UptimeMs();
 }
 
 static uint64_t _linux_time_left(uint64_t t_end, uint64_t t_now)
@@ -71,7 +54,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     int fd = 0;
     int rc = 0;
     char service[6];
-
+    int sockopt = 1;
     memset(&hints, 0, sizeof(hints));
 
     PLATFORM_LINUXSOCK_LOG("establish tcp connection with server(host=%s port=%u)", host, port);
@@ -99,6 +82,9 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
             rc = 0;
             continue;
         }
+
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&sockopt, sizeof(sockopt));
+        setsockopt(fd, SOL_SOCKET, SO_REUSEPORT,&sockopt, sizeof(sockopt));
 
         if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
             rc = fd;

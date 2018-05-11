@@ -163,27 +163,11 @@ DDEFINES +=				\
 
 #PDIR := ../$(PDIR)
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include -I include -I $(SDK_PATH)/include/openssl
-INCLUDES += -I $(PDIR)platforms/aliyun/platform/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-utils
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-log
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/utils/digest
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/iot-coap-c
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl/imports
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/utils/misc
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/system
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/import/linux/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/guider
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/security
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-log
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/mqtt
-INCLUDES += -I $(PDIR)include/ota
-INCLUDES += -I $(PDIR)include/mqtt
-
+INCLUDES := $(INCLUDES) -I $(PDIR)include -I include -I $(SDK_PATH)/include
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl/imports
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl/exports
 sinclude $(SDK_PATH)/Makefile
 
 .PHONY: FORCE
 FORCE:
-

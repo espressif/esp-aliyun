@@ -15,74 +15,105 @@
  * limitations under the License.
  *
  */
+#include <stdint.h>
+#include <sys/socket.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <memory.h>
-
-#include <pthread.h>
-#include <unistd.h>
-#include <sys/time.h>
+#include "esp_timer.h"
 
 #include "iot_import.h"
+
 #ifdef MQTT_ID2_AUTH
 #include "tfs.h"
 #endif /**< MQTT_ID2_AUTH*/
 
-#define __DEMO__
+typedef xSemaphoreHandle osi_mutex_t;
+static os_timer_t hal_micros_overflow_timer;
+static uint32_t hal_micros_at_last_overflow_tick = 0;
+static uint32_t hal_micros_overflow_count = 0;
 
-#ifdef __DEMO__
 char _product_key[PRODUCT_KEY_LEN + 1];
 char _product_secret[PRODUCT_SECRET_LEN + 1];
 char _device_name[DEVICE_NAME_LEN + 1];
 char _device_secret[DEVICE_SECRET_LEN + 1];
 #define UNUSED(expr) do { (void)(expr); } while (0)
-#endif
+
+static void hal_micros_overflow_tick(void *arg)
+{
+    uint32_t m = system_get_time();
+
+    if (m < hal_micros_at_last_overflow_tick) {
+        hal_micros_overflow_count ++;
+    }
+
+    hal_micros_at_last_overflow_tick = m;
+}
+
+void hal_micros_set_default_time(void)
+{
+    os_timer_disarm(&hal_micros_overflow_timer);
+    os_timer_setfn(&hal_micros_overflow_timer, (os_timer_func_t *)hal_micros_overflow_tick, 0);
+    os_timer_arm(&hal_micros_overflow_timer, 60 * 1000, 1);
+}
+
+uint64_t hal_millis(void)
+{
+    uint32_t m = system_get_time();
+    uint32_t c = hal_micros_overflow_count + ((m < hal_micros_at_last_overflow_tick) ? 1 : 0);
+    return c * 4294967LL + m / 1000;
+}
+
+/**
+ * @brief  gain millisecond time
+ * gettimeofday in libcirom.a cannot get an accuracy time, redefine it and for time calculation
+ *
+ * */
+void mygettimeofday(struct timeval *tv, void *tz)
+{
+    uint32_t current_time_us = system_get_time();
+
+    if (tv == NULL) {
+        return;
+    }
+
+    if (tz != NULL) {
+        tv->tv_sec = *(time_t *)tz + current_time_us / 1000000;
+    } else {
+        tv->tv_sec = current_time_us / 1000000;
+    }
+
+    tv->tv_usec = current_time_us % 1000000;
+
+}
 
 void *HAL_MutexCreate(void)
 {
-    int err_num;
-    pthread_mutex_t *mutex = (pthread_mutex_t *)HAL_Malloc(sizeof(pthread_mutex_t));
-    if (NULL == mutex) {
+    osi_mutex_t *p_mutex = NULL;
+    p_mutex = (osi_mutex_t *)malloc(sizeof(osi_mutex_t));
+    if(p_mutex == NULL)
         return NULL;
-    }
 
-    if (0 != (err_num = pthread_mutex_init(mutex, NULL))) {
-        perror("create mutex failed");
-        HAL_Free(mutex);
-        return NULL;
-    }
-
-    return mutex;
+    *p_mutex = xSemaphoreCreateMutex();
+    return p_mutex;
 }
 
 void HAL_MutexDestroy(_IN_ void *mutex)
 {
-    int err_num;
-    if (0 != (err_num = pthread_mutex_destroy((pthread_mutex_t *)mutex))) {
-        perror("destroy mutex failed");
-    }
-
-    HAL_Free(mutex);
+    vSemaphoreDelete(*((osi_mutex_t*)mutex));
+    free(mutex);
 }
 
 void HAL_MutexLock(_IN_ void *mutex)
 {
-    int err_num;
-    if (0 != (err_num = pthread_mutex_lock((pthread_mutex_t *)mutex))) {
-        perror("lock mutex failed");
-    }
+    xSemaphoreTake(*((osi_mutex_t*)mutex), portMAX_DELAY);
 }
 
 void HAL_MutexUnlock(_IN_ void *mutex)
 {
-    int err_num;
-    if (0 != (err_num = pthread_mutex_unlock((pthread_mutex_t *)mutex))) {
-        perror("unlock mutex failed");
-    }
+    xSemaphoreGive(*((osi_mutex_t*)mutex));
 }
 
 void *HAL_Malloc(_IN_ uint32_t size)
@@ -95,44 +126,35 @@ void HAL_Free(_IN_ void *ptr)
     free(ptr);
 }
 
-#ifdef __APPLE__
 uint64_t HAL_UptimeMs(void)
 {
     struct timeval tv = { 0 };
     uint64_t time_ms;
 
-    gettimeofday(&tv, NULL);
+    mygettimeofday(&tv, NULL);
 
-    time_ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-
-    return time_ms;
-}
-#else
-uint64_t HAL_UptimeMs(void)
-{
-    uint64_t            time_ms;
-    struct timespec     ts;
-
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    time_ms = ((uint64_t)ts.tv_sec * (uint64_t)1000) + (ts.tv_nsec / 1000 / 1000);
+    time_ms = (uint64_t)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
 
     return time_ms;
 }
-#endif
 
 void HAL_SleepMs(_IN_ uint32_t ms)
 {
-    usleep(1000 * ms);
+    if ((ms > 0) && (ms < portTICK_RATE_MS)) {
+        ms = portTICK_RATE_MS;
+    }
+
+    vTaskDelay(ms / portTICK_RATE_MS);
 }
 
 void HAL_Srandom(uint32_t seed)
 {
-    srandom(seed);
+    return;
 }
 
 uint32_t HAL_Random(uint32_t region)
 {
-    return (region > 0) ? (random() % region) : 0;
+    return os_random();
 }
 
 int HAL_Snprintf(_IN_ char *str, const int len, const char *fmt, ...)
@@ -166,56 +188,43 @@ void HAL_Printf(_IN_ const char *fmt, ...)
 int HAL_GetPartnerID(char* pid_str)
 {
     memset(pid_str, 0x0, PID_STRLEN_MAX);
-#ifdef __DEMO__
-    strcpy(pid_str, "example.demo.partner-id");
-#endif
+    strcpy(pid_str, "espressif");
     return strlen(pid_str);
 }
 
 int HAL_GetModuleID(char* mid_str)
 {
     memset(mid_str, 0x0, MID_STRLEN_MAX);
-#ifdef __DEMO__
-    strcpy(mid_str, "example.demo.module-id");
-#endif
+    strcpy(mid_str, "wroom-02");
     return strlen(mid_str);
 }
-
 
 char *HAL_GetChipID(_OU_ char* cid_str)
 {
     memset(cid_str, 0x0, HAL_CID_LEN);
-#ifdef __DEMO__
-    strncpy(cid_str, "rtl8188eu 12345678", HAL_CID_LEN);
+    strncpy(cid_str, "esp8266", HAL_CID_LEN);
     cid_str[HAL_CID_LEN - 1] = '\0';
-#endif
     return cid_str;
 }
-
 
 int HAL_GetDeviceID(_OU_ char* device_id)
 {
     memset(device_id, 0x0, DEVICE_ID_LEN);
-#ifdef __DEMO__
     HAL_Snprintf(device_id, DEVICE_ID_LEN, "%s.%s", _product_key, _device_name);
     device_id[DEVICE_ID_LEN - 1] = '\0';
-#endif
-
     return strlen(device_id);
 }
 
 #ifdef MQTT_ID2_AUTH
 int HAL_GetID2(_OU_ char* id2_str)
 {
-	int rc;
+    int rc;
     uint8_t                 id2[TFS_ID2_LEN + 1] = {0};
-	uint32_t                id2_len = TFS_ID2_LEN + 1;
+    uint32_t                id2_len = TFS_ID2_LEN + 1;
     memset(id2_str, 0x0, TFS_ID2_LEN + 1);
-#ifdef __DEMO__
     rc = tfs_get_ID2(id2, &id2_len);
     if (rc < 0) return rc;
     strncpy(id2_str, (const char*)id2, TFS_ID2_LEN);
-#endif
     return strlen(id2_str);
 }
 #endif /**< MQTT_ID2_AUTH*/
@@ -223,104 +232,44 @@ int HAL_GetID2(_OU_ char* id2_str)
 int HAL_SetProductKey(_IN_ char* product_key)
 {
     int len = strlen(product_key);
-#ifdef __DEMO__
     if (len > PRODUCT_KEY_LEN) return -1;
     memset(_product_key, 0x0, PRODUCT_KEY_LEN + 1);
     strncpy(_product_key, product_key, len);
-	FILE *fp = fopen("pk", "w");
-    if(fp == NULL)
-    	return -1;
-    unsigned int written_len = 0;
-	written_len = fwrite(product_key, 1, strlen(product_key), fp);
-    fclose(fp);
-
-	if (written_len != strlen(product_key)) {
-		return -1;
-	}
-#endif
-    return written_len;
+    return len;
 }
-
 
 int HAL_SetDeviceName(_IN_ char* device_name)
 {
     int len = strlen(device_name);
-#ifdef __DEMO__
     if (len > DEVICE_NAME_LEN) return -1;
     memset(_device_name, 0x0, DEVICE_NAME_LEN + 1);
     strncpy(_device_name, device_name, len);
-	FILE *fp = fopen("dn", "w");
-    if(fp == NULL)
-    	return -1;
-    unsigned int written_len = 0;
-	written_len = fwrite(device_name, 1, strlen(device_name), fp);
-    fclose(fp);
-
-	if (written_len != strlen(device_name)) {
-		return -1;
-	}
-#endif
-    return written_len;
+    return len;
 }
-
 
 int HAL_SetDeviceSecret(_IN_ char* device_secret)
 {
     int len = strlen(device_secret);
-#ifdef __DEMO__
     if (len > DEVICE_SECRET_LEN) return -1;
     memset(_device_secret, 0x0, DEVICE_SECRET_LEN + 1);
     strncpy(_device_secret, device_secret, len);
-    FILE *fp = fopen("ds", "w");
-    if(fp == NULL)
-    	return -1;
-    unsigned int written_len = 0;
-	written_len = fwrite(device_secret, 1, strlen(device_secret), fp);
-    fclose(fp);
-
-	if (written_len != strlen(device_secret)) {
-		return -1;
-	}
-#endif
-    return written_len;
+    return len;
 }
-
 
 int HAL_SetProductSecret(_IN_ char* product_secret)
 {
     int len = strlen(product_secret);
-#ifdef __DEMO__
     if (len > PRODUCT_SECRET_LEN) return -1;
     memset(_product_secret, 0x0, PRODUCT_SECRET_LEN + 1);
     strncpy(_product_secret, product_secret, len);
-	FILE *fp = fopen("ps", "w");
-    if(fp == NULL)
-    	return -1;
-    unsigned int written_len = 0;
-	written_len = fwrite(product_secret, 1, strlen(product_secret), fp);
-    fclose(fp);
-
-	if (written_len != strlen(product_secret)) {
-		return -1;
-	}
-#endif
-    return written_len;
+    return len;
 }
 
 int HAL_GetProductKey(_OU_ char* product_key)
 {
     int len;
     memset(product_key, 0x0, PRODUCT_KEY_LEN);
-
-#ifdef __DEMO__
-	FILE * fp = fopen("pk","r");
-    if (NULL == fp) return -1;
-    len = fread(product_key,PRODUCT_KEY_LEN,1,fp);
-    UNUSED(len);
-    product_key[PRODUCT_KEY_LEN] = '\0';
-    fclose(fp);
-#endif
-
+    strncpy(product_key, _product_key, PRODUCT_KEY_LEN);
     return strlen(product_key);
 }
 
@@ -328,16 +277,7 @@ int HAL_GetProductSecret(_OU_ char* product_secret)
 {
     int len;
     memset(product_secret, 0x0, PRODUCT_SECRET_LEN);
-
-#ifdef __DEMO__
-	FILE * fp = fopen("ps","r");
-    if (NULL == fp) return -1;
-    len = fread(product_secret,PRODUCT_SECRET_LEN,1,fp);
-    UNUSED(len);
-    product_secret[PRODUCT_SECRET_LEN] = '\0';
-    fclose(fp);
-#endif
-
+    strncpy(product_secret, _product_secret, PRODUCT_SECRET_LEN);
     return strlen(product_secret);
 }
 
@@ -345,16 +285,7 @@ int HAL_GetDeviceName(_OU_ char* device_name)
 {
     int len;
     memset(device_name, 0x0, DEVICE_NAME_LEN);
-
-#ifdef __DEMO__
-	FILE * fp = fopen("dn","r");
-    if (NULL == fp) return -1;
-    len = fread(device_name,DEVICE_NAME_LEN,1,fp);
-    UNUSED(len);
-    device_name[DEVICE_NAME_LEN] = '\0';
-    fclose(fp);
-#endif
-
+    strncpy(device_name, _device_name, DEVICE_NAME_LEN);
     return strlen(device_name);
 }
 
@@ -362,69 +293,32 @@ int HAL_GetDeviceSecret(_OU_ char* device_secret)
 {
     int len;
     memset(device_secret, 0x0, DEVICE_SECRET_LEN);
-
-#ifdef __DEMO__
-    FILE * fp = fopen("ds","r");
-    if (NULL == fp) return -1;
-    len = fread(device_secret,DEVICE_SECRET_LEN,1,fp);
-    UNUSED(len);
-    device_secret[DEVICE_SECRET_LEN] = '\0';
-    fclose(fp);
-#endif
-
+    strncpy(device_secret, _device_secret, DEVICE_SECRET_LEN);
     return strlen(device_secret);
 }
 
-
 int HAL_GetFirmwareVesion(_OU_ char* version)
 {
-    char *ver = "1.0";
+    char *ver = "v2.x.2.10";
     int len = strlen(ver);
+    if (len > FIRMWARE_VERSION_MAXLEN)
+        return 0;
     memset(version, 0x0, FIRMWARE_VERSION_MAXLEN);
-#ifdef __DEMO__
-    strncpy(version, ver, len);
-    version[len] = '\0';
-#endif
-    return strlen(version);
+    strncpy(version, ver, FIRMWARE_VERSION_MAXLEN);
+    return len;
 }
-
-static FILE *fp;
-
-#define otafilename "/tmp/alinkota.bin"
 
 void HAL_Firmware_Persistence_Start(void)
 {
-#ifdef __DEMO__
-    fp = fopen(otafilename, "w");
-//    assert(fp);
-#endif
     return;
 }
 
 int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
 {
-#ifdef __DEMO__
-    unsigned int written_len = 0;
-    written_len = fwrite(buffer, 1, length, fp);
-
-    if (written_len != length) {
-        return -1;
-    }
-#endif
     return 0;
 }
 
 int HAL_Firmware_Persistence_Stop(void)
 {
-#ifdef __DEMO__
-    if (fp != NULL) {
-        fclose(fp);
-    }
-#endif
-
-    /* check file md5, and burning it to flash ... finally reboot system */
-
     return 0;
 }
-
-
