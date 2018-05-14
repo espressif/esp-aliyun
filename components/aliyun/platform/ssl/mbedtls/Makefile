@@ -12,11 +12,7 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
-UP_EXTRACT_DIR = ..
-GEN_LIBS = libplatform.a
-COMPONENTS_libplatform =     \
-    os/espressif/libpf_os.a  \
-    ssl/mbedtls/libpf_mbedtls.a
+GEN_LIBS = libpf_mbedtls.a
 endif
 
 #############################################################
@@ -39,7 +35,8 @@ endif
 #
 # Required for each makefile to inherit from the parent
 #
-
+DEFINES += -DMBEDTLS_CONFIG_FILE='"config_esp.h"'
+ 
 INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
 PDIR := ../$(PDIR)

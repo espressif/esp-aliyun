@@ -11,13 +11,6 @@
 #     subdir/lib to be extracted and rolled up into
 #     a generated lib/image xxx.a ()
 #
-ifndef PDIR
-UP_EXTRACT_DIR = ..
-GEN_LIBS = libplatform.a
-COMPONENTS_libplatform =     \
-    os/espressif/libpf_os.a  \
-    ssl/mbedtls/libpf_mbedtls.a
-endif
 
 #############################################################
 # Configuration i.e. compile options etc.
