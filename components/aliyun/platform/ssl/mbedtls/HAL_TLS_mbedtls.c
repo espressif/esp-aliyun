@@ -18,7 +18,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <memory.h>
 #include <stdlib.h>
 #include <string.h>
 #if defined(_PLATFORM_IS_LINUX_)
@@ -42,6 +41,10 @@
 
 #define SEND_TIMEOUT_SECONDS (10)
 
+#ifndef MBEDTLS_ERR_SSL_NON_FATAL
+#define MBEDTLS_ERR_SSL_NON_FATAL                         -0x6680  /**< The alert message received indicates a non-fatal error. */
+#endif
+
 typedef struct _TLSDataParams {
     mbedtls_ssl_context ssl;          /**< mbed TLS control context. */
     mbedtls_net_context fd;           /**< mbed TLS network context. */
@@ -53,18 +56,10 @@ typedef struct _TLSDataParams {
 
 #define SSL_LOG(format, ...) \
     do { \
-        HAL_Printf("[inf] %s(%d): "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-        fflush(stdout);\
-    }while(0);
-
+        printf("[inf] %s(%d): "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+    }while(0)
 
 #define DEBUG_LEVEL 10
-
-
-static unsigned int _avRandom()
-{
-    return (((unsigned int)rand() << 16) + rand());
-}
 
 static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
 {
@@ -72,7 +67,7 @@ static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
     uint8_t   rngoffset = 0;
 
     while (rnglen > 0) {
-        *(output + rngoffset) = (unsigned char)_avRandom() ;
+        *(output + rngoffset) = (unsigned char)os_random() ;
         rngoffset++;
         rnglen--;
     }
@@ -81,11 +76,18 @@ static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
 
 static void _ssl_debug(void *ctx, int level, const char *file, int line, const char *str)
 {
-    ((void) level);
-    if (NULL != ctx) {
-        fprintf((FILE *) ctx, "%s:%04d: %s", file, line, str);
-        fflush((FILE *) ctx);
+    /* Shorten 'file' from the whole file path to just the filename
+
+       This is a bit wasteful because the macros are compiled in with
+       the full _FILE_ path in each case.
+    */
+    char *file_sep = rindex(file, '/');
+
+    if(file_sep) {
+        file = file_sep + 1;
     }
+
+    printf("mbedtls: %s:%d %s", file, line, str);
 }
 
 static int _real_confirm(int verify_result)
@@ -119,13 +121,22 @@ static int _real_confirm(int verify_result)
 
 static int _ssl_parse_crt(mbedtls_x509_crt *crt)
 {
-    char buf[1024];
+    char *buf = NULL;
+    buf = (char*)zalloc(1024);
+    if (!buf) {
+        return -1;
+    }
     mbedtls_x509_crt *local_crt = crt;
     int i = 0;
     while (local_crt) {
         mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", local_crt);
         {
-            char str[512];
+            char *str = NULL;
+            str = (char*)zalloc(512);
+            if (!str) {
+                free(buf);
+                return -1;
+            }
             const char *start, *cur;
             start = buf;
             for (cur = buf; *cur != '\0'; cur++) {
@@ -140,11 +151,13 @@ static int _ssl_parse_crt(mbedtls_x509_crt *crt)
                     HAL_Printf("%s", str);
                 }
             }
+            free(str);
         }
         SSL_LOG("crt content:%u", (uint32_t)strlen(buf));
         local_crt = local_crt->next;
         i++;
     }
+    free(buf);
     return i;
 }
 
