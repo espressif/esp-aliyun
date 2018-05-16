@@ -91,6 +91,7 @@ COMPONENTS_eagle.app.v6 = \
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \
+	-L./components/aliyun/iotkit-embedded/output/release/lib \
 	-Wl,--gc-sections   \
 	-nostdlib	\
     -T$(LD_FILE)   \
@@ -109,6 +110,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-lfreertos	\
 	-llwip	\
 	-lssl	\
+	-liot_sdk \
 	-ldriver \
 	-lmirom\
 	-lmbedtls               \
@@ -138,7 +140,6 @@ DEPENDS_eagle.app.v6 = \
 #	-DTXRX_TXBUF_DEBUG
 #	-DTXRX_RXBUF_DEBUG
 #	-DWLAN_CONFIG_CCX
-CONFIGURATION_DEFINES =	-DICACHE_FLASH -DMQTT_DIRECT
 
 DEFINES +=				\
 	$(UNIVERSAL_TARGET_DEFINES)	\
@@ -147,7 +148,6 @@ DEFINES +=				\
 DDEFINES +=				\
 	$(UNIVERSAL_TARGET_DEFINES)	\
 	$(CONFIGURATION_DEFINES)
-
 
 #############################################################
 # Recursion Magic - Don't touch this!!
