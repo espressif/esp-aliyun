@@ -1,7 +1,10 @@
-COVERAGE_CMD            := src/scripts/walk_through_examples.sh
 DEFAULT_BLD             := src/configs/config.espressif.esp8266
 POST_FINAL_OUT_HOOK     := Post_Distro
 SUBDIRS                 := directory-not-exist-actually
+
+ifeq (Darwin,$(shell uname))
+POST_FINAL_OUT_HOOK     :=
+endif
 
 FEATURE_MQTT_SHADOW         ?= $(FEATURE_MQTT_COMM_ENABLED)
 FEATURE_COAP_DTLS_SUPPORT   ?= $(FEATURE_COAP_COMM_ENABLED)
@@ -12,9 +15,19 @@ FEATURE_OTA_FETCH_CHANNEL   ?= HTTP
 FEATURE_OTA_SIGNAL_CHANNEL  ?= MQTT
 FEATURE_MQTT_ID2_ENV        ?= online
 FEATURE_MQTT_COMM_ENABLED   ?= n
+FEATURE_SERVICE_COTA_ENABLED   ?= n
 
 CONFIG_LIB_EXPORT           ?= static
 
-FEATURE_SUBDEVICE_STATUS    ?= gateway
+# gateway & subdevice
+FEATURE_SUBDEVICE_STATUS    ?= gateway   
+# MQTT & CLOUD_CONN
+FEATURE_SUBDEVICE_CHANNEL   ?= MQTT 
 
-CFLAGS  += -DFORCE_SSL_VERIFY
+FEATURE_CMP_VIA_MQTT_DIRECT ?= y
+# MQTT & COAP & HTTP
+FEATURE_CMP_VIA_CLOUD_CONN  ?= MQTT
+
+FEATURE_SUPPORT_PRODUCT_SECRET ?= n
+
+#CFLAGS += -DFORCE_SSL_VERIFY
