@@ -438,17 +438,17 @@ void mqtt_task(void *pvParameter)
 {
     printf("\nMQTT task started...\n");
 
-    IOT_OpenLog("mqtt");
-    IOT_SetLogLevel(IOT_LOG_DEBUG);
-
-    HAL_SetProductKey(PRODUCT_KEY);
-    HAL_SetDeviceName(DEVICE_NAME);
-    HAL_SetDeviceSecret(DEVICE_SECRET);
-
     while (1) { // reconnect to tls
         while (!got_ip_flag) {
             vTaskDelay(TASK_CYCLE / portTICK_RATE_MS);
         }
+
+        IOT_OpenLog("mqtt");
+        IOT_SetLogLevel(IOT_LOG_DEBUG);
+
+        HAL_SetProductKey(PRODUCT_KEY);
+        HAL_SetDeviceName(DEVICE_NAME);
+        HAL_SetDeviceSecret(DEVICE_SECRET);
 
         obtain_time();
         printf("MQTT client example begin, free heap size:%d\n", system_get_free_heap_size());
