@@ -450,6 +450,9 @@ static int _network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, i
     int             ret = -1;
     char            err_str[33];
 
+    // TODO: remove timeout_ms=0 workaround when mqtt_client.c fixes iotx_mc_read_packet
+    timeout_ms += 1;
+
     mbedtls_ssl_conf_read_timeout(&(pTlsData->conf), timeout_ms);
     while (readLen < len) {
         ret = mbedtls_ssl_read(&(pTlsData->ssl), (unsigned char *)(buffer + readLen), (len - readLen));
