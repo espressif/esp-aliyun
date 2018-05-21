@@ -12,10 +12,7 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
-UP_EXTRACT_DIR = ..
-GEN_LIBS = libuser.a
-COMPONENTS_libuser =     \
-    mqtt/libaliyun_mqtt.a
+GEN_LIBS = libpf_os.a
 endif
 
 #############################################################
@@ -40,7 +37,6 @@ endif
 #
 
 INCLUDES := $(INCLUDES) -I $(PDIR)include
-INCLUDES += -I ./ -I ../
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
 

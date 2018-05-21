@@ -22,13 +22,11 @@ GEN_IMAGES= eagle.app.v6.out
 GEN_BINS= eagle.app.v6.bin
 SPECIAL_MKTARGETS=$(APP_MKTARGETS)
 SUBDIRS=    user \
-            platforms	\
-            ota	\
-            mqtt	\
+            components/aliyun/platform
 
 endif # } PDIR
 
-LDDIR = $(SDK_PATH)/ld
+LDDIR = ./ld
 
 CCFLAGS += -Os
 
@@ -46,14 +44,54 @@ ifeq ($(FLAVOR),release)
     TARGET_LDFLAGS += -g -O0
 endif
 
+LD_FILE = $(LDDIR)/eagle.app.v6.ld
+
+ifneq ($(app),0)
+    ifneq ($(findstring $(size_map),  6  8  9),)
+      LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).2048.ld
+    else
+      ifeq ($(size_map), 5)
+        LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).2048.ld
+      else
+        ifeq ($(size_map), 4)
+          LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+        else
+          ifeq ($(size_map), 3)
+            LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+          else
+            ifeq ($(size_map), 2)
+              LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).1024.app$(app).ld
+            else
+              ifeq ($(size_map), 0)
+                LD_FILE = $(LDDIR)/eagle.app.v6.$(boot).512.app$(app).ld
+              endif
+            endif
+          endif
+        endif
+      endif
+    endif
+endif
+
+# disable compile submodule repeatedly
+dummy: all
+
+ALIYUN_PATH = components/aliyun/iotkit-embedded
+
+aliyun:
+	cp $(ALIYUN_PATH)/src/configs/default_settings.mk $(ALIYUN_PATH)/src/configs/default_settings.mk.bak
+	cp components/aliyun/config/* $(ALIYUN_PATH)/src/configs/
+	make -C $(ALIYUN_PATH) distclean
+	make -C $(ALIYUN_PATH)
+	rm $(ALIYUN_PATH)/src/configs/config.espressif.esp8266
+	mv $(ALIYUN_PATH)/src/configs/default_settings.mk.bak $(ALIYUN_PATH)/src/configs/default_settings.mk
+
 COMPONENTS_eagle.app.v6 = \
-    user/libuser.a  \
-    platforms/libplatforms.a	\
-    ota/libaliyun_ota.a 	\
-    mqtt/libaliyun_mqtt.a 	\
+    user/libuser.a \
+    components/aliyun/platform/libplatform.a
 
 LINKFLAGS_eagle.app.v6 = \
 	-L$(SDK_PATH)/lib        \
+	-L./components/aliyun/iotkit-embedded/output/release/lib \
 	-Wl,--gc-sections   \
 	-nostdlib	\
     -T$(LD_FILE)   \
@@ -72,6 +110,7 @@ LINKFLAGS_eagle.app.v6 = \
 	-lfreertos	\
 	-llwip	\
 	-lssl	\
+	-liot_sdk \
 	-ldriver \
 	-lmirom\
 	-lmbedtls               \
@@ -101,7 +140,22 @@ DEPENDS_eagle.app.v6 = \
 #	-DTXRX_TXBUF_DEBUG
 #	-DTXRX_RXBUF_DEBUG
 #	-DWLAN_CONFIG_CCX
-CONFIGURATION_DEFINES =	-DICACHE_FLASH -DMQTT_DIRECT
+
+CONFIGURATION_DEFINES =	\
+    -DCMP_ENABLED \
+    -DCMP_VIA_MQTT_DIRECT \
+    -DDM_ENABLED \
+    -DHTTP_COMM_ENABLED \
+    -DIOTX_NET_INIT_WITH_PK_EXT \
+    -DIOTX_WITHOUT_ITLS \
+    -DMQTT_COMM_ENABLED \
+    -DMQTT_DIRECT \
+    -DMQTT_DIRECT_NOITLS \
+    -DMQTT_SHADOW \
+    -DOTA_ENABLED \
+    -DOTA_SIGNAL_CHANNEL=1 \
+    -DSERVICE_OTA_ENABLED \
+    -DSUBDEV_VIA_MQTT 
 
 DEFINES +=				\
 	$(UNIVERSAL_TARGET_DEFINES)	\
@@ -110,7 +164,6 @@ DEFINES +=				\
 DDEFINES +=				\
 	$(UNIVERSAL_TARGET_DEFINES)	\
 	$(CONFIGURATION_DEFINES)
-
 
 #############################################################
 # Recursion Magic - Don't touch this!!
@@ -126,27 +179,11 @@ DDEFINES +=				\
 
 #PDIR := ../$(PDIR)
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include -I include -I $(SDK_PATH)/include/openssl
-INCLUDES += -I $(PDIR)platforms/aliyun/platform/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-utils
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-log
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/utils/digest
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/iot-coap-c
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl/imports
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/utils/misc
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/system
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/import/linux/include
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/guider
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/security
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/sdk-impl
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/packages/LITE-log
-INCLUDES += -I $(PDIR)platforms/aliyun/IoT-SDK_V2.0/src/mqtt
-INCLUDES += -I $(PDIR)include/ota
-INCLUDES += -I $(PDIR)include/mqtt
-
+INCLUDES := $(INCLUDES) -I $(PDIR)include -I include -I $(SDK_PATH)/include
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl/imports
+INCLUDES += -I $(PDIR)/components/aliyun/iotkit-embedded/src/sdk-impl/exports
 sinclude $(SDK_PATH)/Makefile
 
 .PHONY: FORCE
 FORCE:
-

@@ -93,6 +93,7 @@ echo ""
 echo "start..."
 echo ""
 
+make aliyun
 make clean
 
 make BOOT=$boot APP=$app SPI_SPEED=$spi_speed SPI_MODE=$spi_mode SPI_SIZE_MAP=$spi_size_map

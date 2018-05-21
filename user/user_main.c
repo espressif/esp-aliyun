@@ -1,7 +1,7 @@
 /*
  * ESPRESSIF MIT License
  *
- * Copyright (c) 2015 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
  * Permission is hereby granted for use on ESPRESSIF SYSTEMS ESP8266 only, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
@@ -21,22 +21,21 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-
+#include <stdbool.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_common.h"
+#include "lwip/ip_addr.h"
+#include "esp_sta.h"
 #include "esp_wifi.h"
-#include "uart.h"
 #include "apps/sntp.h"
 
 #include "iot_export.h"
-#include "aliyun_port.h"
+#include "print_debug.h"
 #include "aliyun_config.h"
-#include "ota.h"
-#include "mqtt.h"
 
-int got_ip_flag = 0;
-ota_info_t *p_ota_info = NULL;
+bool got_ip_flag = false;
+
+extern void mqtt_task(void *pvParameter);
 
 /******************************************************************************
  * FunctionName : user_rf_cal_sector_set
@@ -50,10 +49,10 @@ ota_info_t *p_ota_info = NULL;
  * Parameters   : none
  * Returns      : rf cal sector
 *******************************************************************************/
-uint32 user_rf_cal_sector_set(void)
+uint32_t user_rf_cal_sector_set(void)
 {
     flash_size_map size_map = system_get_flash_size_map();
-    uint32 rf_cal_sec = 0;
+    uint32_t rf_cal_sec = 0;
 
     switch (size_map) {
     case FLASH_SIZE_4M_MAP_256_256:
@@ -90,28 +89,17 @@ uint32 user_rf_cal_sector_set(void)
     return rf_cal_sec;
 }
 
-void sntpfn()
+void obtain_time(void)
 {
 #if START_SNTP
     printf("Initializing SNTP\n");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
 
-// for set more sntp server, plz modify macro SNTP_MAX_SERVERS in sntp_opts.h file
-    sntp_setservername(0, "202.112.29.82");        // set sntp server after got ip address, you had better to adjust the sntp server to your area
-//    sntp_setservername(1, "time-a.nist.gov");
-//    sntp_setservername(2, "ntp.sjtu.edu.cn");
-//    sntp_setservername(3, "0.nettime.pool.ntp.org");
-//    sntp_setservername(4, "time-b.nist.gov");
-//    sntp_setservername(5, "time-a.timefreq.bldrdoc.gov");
-//    sntp_setservername(6, "time-b.timefreq.bldrdoc.gov");
-//    sntp_setservername(7, "time-c.timefreq.bldrdoc.gov");
-//    sntp_setservername(8, "utcnist.colorado.edu");
-//    sntp_setservername(9, "time.nist.gov");
-
+    sntp_setservername(0, "cn.pool.ntp.org");
     sntp_init();
 
     while (1) {
-        u32_t ts = 0;
+        uint32_t ts = 0;
         ts = sntp_get_current_timestamp();
         printf("current time : %s\n", sntp_get_real_time(ts));
 
@@ -128,18 +116,17 @@ void sntpfn()
 }
 
 // WiFi callback function
-void event_handler(System_Event_t *event)
+static void event_handler(System_Event_t *event)
 {
     switch (event->event_id) {
     case EVENT_STAMODE_GOT_IP:
         printf("WiFi connected\n");
-        sntpfn();
-        got_ip_flag = 1;
+        got_ip_flag = true;
         break;
 
     case EVENT_STAMODE_DISCONNECTED:
         printf("WiFi disconnected, try to connect...\n");
-        got_ip_flag = 0;
+        got_ip_flag = false;
         wifi_station_connect();
         break;
 
@@ -148,7 +135,7 @@ void event_handler(System_Event_t *event)
     }
 }
 
-void initialize_wifi(void)
+static void initialize_wifi(void)
 {
     wifi_set_opmode(STATION_MODE);
 
@@ -162,6 +149,7 @@ void initialize_wifi(void)
     wifi_station_set_auto_connect(true);
     wifi_station_set_reconnect_policy(true);
     wifi_set_event_handler_cb(event_handler);
+    wifi_station_connect();
 }
 
 void heap_check_task(void *para)
@@ -174,12 +162,16 @@ void heap_check_task(void *para)
 
 void main_process(void *para)
 {
+	// TODO: update it if offer fragment interface in mbedtls, see as internal issue 1
     extern unsigned int max_content_len;    // maxium fragment length in bytes, more info see as RFC 6066: part 4
     max_content_len = 4 * 1024;
 
+    // TODO: remove it if internal gettimeofday() works, see as internal issue 2
     hal_micros_set_default_time();  // startup millisecond timer, get millisecond timestamp by hal_millis() interface
-    printf("SDK version:%s \n", system_get_sdk_version());
-    printf("\n******************************************  \n  SDK compile time:%s %s\n******************************************\n\n", __DATE__, __TIME__);
+
+    printf("\n******************************************\n");
+    printf("demo compile time:%s %s", __DATE__, __TIME__);
+    printf("\n******************************************\n");
 
 
 #if HEAP_CHECK_TASK
@@ -188,51 +180,10 @@ void main_process(void *para)
 
     initialize_wifi();
 
-    if (DEFAULT_TASK_MODE == REMOTE_OTA_TASK) {
-        p_ota_info = (ota_info_t *)zalloc(sizeof(ota_info_t));
-
-        if (system_param_load(PARAM_SAVE_SEC, 0, p_ota_info, sizeof(ota_info_t)) != true) {
-            print_error("para load");
-        }
-
-        printf("ota flag:%u\n", p_ota_info->ota_flag);
-
-        if (p_ota_info->ota_flag == 1) {
-            printf("bin size:%u\n", p_ota_info->bin_size);
-            printf("latest version:%s\n", p_ota_info->latest_version);
-            printf("hostname:%s\n", p_ota_info->hostname);
-            printf("ota path:%s\n", p_ota_info->ota_path);
-            p_ota_info->ota_flag = 0;
-
-            if (system_param_save_with_protect(PARAM_SAVE_SEC, p_ota_info, sizeof(ota_info_t)) != true) {
-                print_error("para save error");
-            }
-
-            if (xTaskCreate(remote_ota_upgrade_task, "remote_ota_upgrade_task", 2048, NULL, 5, NULL) != pdPASS) {   // start remote ota upgrade
-                print_error("remote upgrade task");
-            }
-
-            printf("remote ota upgrade task start...\n");
-            vTaskDelete(NULL);
-        }
-    }
-
     switch (DEFAULT_TASK_MODE) {
     case MQTT_TASK:
         if (xTaskCreate(mqtt_task, "mqtt_task", 1500, NULL, 5, NULL) != pdPASS) {
             print_error("mqtt task");
-        }
-        break;
-
-    case LOCAL_OTA_TASK:
-        if (xTaskCreate(local_ota_task, "local_ota_task", 1500, NULL, 5, NULL) != pdPASS) {
-            print_error("lota task");
-        }
-        break;
-
-    case REMOTE_OTA_TASK:
-        if (xTaskCreate(remote_ota_task, "remote_ota_task", 1500, NULL, 5, NULL) != pdPASS) {
-            print_error("rota task");
         }
         break;
 
@@ -246,10 +197,6 @@ void main_process(void *para)
 
 void user_init(void)
 {
-    // default baudrate: 74880, change it if necessary
-//    UART_SetBaudrate(0, 115200);
-//    UART_SetBaudrate(1, 115200);
-
     if (xTaskCreate(main_process, "main_process", 1024, NULL, 5, NULL) != pdPASS) {
         print_error("main process");
     }

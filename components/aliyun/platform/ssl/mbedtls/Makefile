@@ -12,10 +12,7 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
-UP_EXTRACT_DIR = ..
-GEN_LIBS = libuser.a
-COMPONENTS_libuser =     \
-    mqtt/libaliyun_mqtt.a
+GEN_LIBS = libpf_mbedtls.a
 endif
 
 #############################################################
@@ -38,9 +35,10 @@ endif
 #
 # Required for each makefile to inherit from the parent
 #
-
+DEFINES += -DMBEDTLS_CONFIG_FILE='"config_esp.h"'
+ 
 INCLUDES := $(INCLUDES) -I $(PDIR)include
-INCLUDES += -I ./ -I ../
+INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
 

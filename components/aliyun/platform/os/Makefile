@@ -11,12 +11,6 @@
 #     subdir/lib to be extracted and rolled up into
 #     a generated lib/image xxx.a ()
 #
-ifndef PDIR
-UP_EXTRACT_DIR = ..
-GEN_LIBS = libuser.a
-COMPONENTS_libuser =     \
-    mqtt/libaliyun_mqtt.a
-endif
 
 #############################################################
 # Configuration i.e. compile options etc.
@@ -40,7 +34,6 @@ endif
 #
 
 INCLUDES := $(INCLUDES) -I $(PDIR)include
-INCLUDES += -I ./ -I ../
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
 

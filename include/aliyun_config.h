@@ -1,7 +1,7 @@
 /*
  * ESPRESSIF MIT License
  *
- * Copyright (c) 2015 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
  * Permission is hereby granted for use on ESPRESSIF SYSTEMS ESP8266 only, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
@@ -23,7 +23,12 @@
  */
 #ifndef ALIYUN_CONFIG_H_
 #define ALIYUN_CONFIG_H_
-#include <stdint.h>
+
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     MQTT_TASK,          // subscribe & publish messages to aliyun cloud by MQTT
@@ -34,10 +39,10 @@ typedef enum {
 #define HEAP_CHECK_TASK 0   // check free heap size
 #define TASK_CYCLE 2000     // task cycle: 2000 ms
 
-/*IMPORTANT: the following configuration maybe need to be modified*/
-/***********************************************************************************************************************/
+/*IMPORTANT: the following configuration need to be modified*/
+/******************************************************/
 
-#define DEFAULT_TASK_MODE MQTT_TASK     // there are there modes for user as the enum TASK_MODE depicted, default: mqtt task
+#define DEFAULT_TASK_MODE MQTT_TASK     // there are three modes for user as the enum TASK_MODE depicted, default: mqtt task
 
 #define WIFI_SSID       "********"       // type:string, your AP/router SSID to config your device networking
 #define WIFI_PASSWORD   "********"    // type:string, your AP/router password
@@ -68,16 +73,21 @@ typedef enum {
 #define TOPIC_UPGRADE           "/ota/device/upgrade/"PRODUCT_KEY"/"DEVICE_NAME
 #define TOPIC_PROGRESS          "/ota/device/progress/"PRODUCT_KEY"/"DEVICE_NAME
 
+#define MQTT_MSGLEN             (1024)
 #define MSG_LEN_MAX             (2048)      // max read & write buffer
-/***********************************************************************************************************************/
+/******************************************************/
 
 /*Please Keep the following configuration if you have no very deep understanding of ESP8266-aliyun */
 #define PARAM_SAVE_SEC  ((RF_ADDR - 4096*4) / 4096)
 
-#define EXAMPLE_TRACE(fmt, args...)  \
+#define EXAMPLE_TRACE(fmt, args...) \
     do { \
         printf(fmt, ##args); \
         printf("%s", "\r\n"); \
     } while(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -13,9 +13,10 @@
 #
 ifndef PDIR
 UP_EXTRACT_DIR = ..
-GEN_LIBS = libuser.a
-COMPONENTS_libuser =     \
-    mqtt/libaliyun_mqtt.a
+GEN_LIBS = libplatform.a
+COMPONENTS_libplatform =     \
+    os/espressif/libpf_os.a  \
+    ssl/mbedtls/libpf_mbedtls.a
 endif
 
 #############################################################
@@ -40,7 +41,7 @@ endif
 #
 
 INCLUDES := $(INCLUDES) -I $(PDIR)include
-INCLUDES += -I ./ -I ../
+INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
 

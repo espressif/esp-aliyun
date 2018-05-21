@@ -25,7 +25,7 @@
 - **ESP8266 设备**  
 ESP8266 设备包括 [ESP8266 芯片](http://espressif.com/zh-hans/products/hardware/esp8266ex/overview)，[ESP8266 模组 ESP-WROOM-02](http://espressif.com/zh-hans/products/hardware/esp-wroom-02/overview)，[ESP8266 开发板 ESP-Launcher](http://espressif.com/zh-hans/products/hardware/development-boards)等。如:  
 
-![esp-launcher](_static/p1.png)
+![esp-launcher](docs/_static/p1.png)
 
 - **USB 线**  
 连接 PC 和 ESP8266，用来烧写/下载程序，查看 log 等作用。
@@ -160,9 +160,9 @@ $ miniterm.py /dev/ttyUSB3 74880
 将 ESP8266 拨至运行状态，即可看到如下 log：  
 log 显示了 ESP8266 基于 TLS 建立了与阿里云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在阿里云控制台上，也能看到 ESP8266 推送的 MQTT 消息。  
 
-![p2](_static/p2.png)
+![p2](docs/_static/p2.png)
 
-![p3](_static/p3.png)
+![p3](docs/_static/p3.png)
 
 
 
