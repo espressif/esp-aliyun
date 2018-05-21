@@ -93,11 +93,9 @@ void event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg)
             break;
 
         case IOTX_MQTT_EVENT_PUBLISH_RECVEIVED:
-            EXAMPLE_TRACE("topic message arrived but without any related handle: topic=%.*s, topic_msg=%.*s",
-                          topic_info->topic_len,
-                          topic_info->ptopic,
-                          topic_info->payload_len,
-                          topic_info->payload);
+            printf("topic message arrived but without any related handle");
+            print_debug(topic_info->ptopic, topic_info->topic_len, "recv topic", 0x00);
+            print_debug(topic_info->payload, topic_info->payload_len, "payload", 0x00);
             break;
 
         case IOTX_MQTT_EVENT_BUFFER_OVERFLOW:
