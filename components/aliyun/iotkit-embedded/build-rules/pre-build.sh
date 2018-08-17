@@ -69,7 +69,8 @@ function Update_Sources()
             cd ${GIT_MOD_NAME} && git reset ${OPTION_Q} --hard ${PKG_REVISION} && cd ${OLDPWD}
         else
             cd ${GIT_MOD_NAME}
-            git pull ${OPTION_Q} origin ${PKG_BRANCH} || exit 1
+            # git pull ${OPTION_Q} origin ${PKG_BRANCH} || exit 1
+            # comment: put all iotkit-embedded source code into inner
         fi
 
         cd ${TOP_DIR}
