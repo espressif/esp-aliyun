@@ -1,0 +1,10 @@
+CROSS_PREFIX = xtensa-esp32-elf-
+
+CONFIG_ENV_CFLAGS += \
+    -DIOTX_NET_INIT_WITH_PK_EXT \
+    -ffunction-sections -fdata-sections -mlongcalls \
+    
+CONFIG_src/platform =
+CONFIG_sample =
+CONFIG_src/sdk-tests =
+CONFIG_src/tls =

@@ -1,0 +1,2 @@
+# ignore make warning
+CONFIG_MAKE_WARN_UNDEFINED_VARIABLES=

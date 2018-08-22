@@ -37,6 +37,8 @@
 #include "mbedtls/debug.h"
 #include "mbedtls/platform.h"
 
+#include "esp_system.h"
+
 #include "iot_import.h"
 
 #define SEND_TIMEOUT_SECONDS (10)
@@ -67,27 +69,11 @@ static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
     uint8_t   rngoffset = 0;
 
     while (rnglen > 0) {
-        *(output + rngoffset) = (unsigned char)os_random() ;
+        *(output + rngoffset) = (unsigned char)esp_random();
         rngoffset++;
         rnglen--;
     }
     return 0;
-}
-
-static void _ssl_debug(void *ctx, int level, const char *file, int line, const char *str)
-{
-    /* Shorten 'file' from the whole file path to just the filename
-
-       This is a bit wasteful because the macros are compiled in with
-       the full _FILE_ path in each case.
-    */
-    char *file_sep = rindex(file, '/');
-
-    if(file_sep) {
-        file = file_sep + 1;
-    }
-
-    printf("mbedtls: %s:%d %s", file, line, str);
 }
 
 static int _real_confirm(int verify_result)
@@ -122,7 +108,7 @@ static int _real_confirm(int verify_result)
 static int _ssl_parse_crt(mbedtls_x509_crt *crt)
 {
     char *buf = NULL;
-    buf = (char*)zalloc(1024);
+    buf = (char*)calloc(1, 1024);
     if (!buf) {
         return -1;
     }
@@ -132,7 +118,7 @@ static int _ssl_parse_crt(mbedtls_x509_crt *crt)
         mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", local_crt);
         {
             char *str = NULL;
-            str = (char*)zalloc(512);
+            str = (char*)calloc(1, 512);
             if (!str) {
                 free(buf);
                 return -1;
@@ -406,8 +392,10 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
     }
 #endif
     mbedtls_ssl_conf_rng(&(pTlsData->conf), _ssl_random, NULL);
-    mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, NULL);
-    /* mbedtls_ssl_conf_dbg( &(pTlsData->conf), _ssl_debug, stdout ); */
+
+#ifdef CONFIG_MBEDTLS_DEBUG
+    mbedtls_esp_enable_debug_log(&(pTlsData->conf), 4);
+#endif
 
     if ((ret = mbedtls_ssl_setup(&(pTlsData->ssl), &(pTlsData->conf))) != 0) {
         SSL_LOG("failed! mbedtls_ssl_setup returned %d", ret);

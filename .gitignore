@@ -13,3 +13,13 @@ iotkit-embedded.pkgs
 .settings
 .project
 .cproject
+
+# IDF compile output
+examples/*/build/*
+
+# iotkit-embedded compile output
+components/aliyun/iotkit-embedded.pkgs
+
+# config
+sdkconfig
+sdkconfig.old
