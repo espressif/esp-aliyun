@@ -1,4 +1,4 @@
-DEFAULT_BLD             := src/configs/config.espressif.esp32
+DEFAULT_BLD             := src/configs/config.espressif.esp
 POST_FINAL_OUT_HOOK     := Post_Distro
 SUBDIRS                 := directory-not-exist-actually
 
