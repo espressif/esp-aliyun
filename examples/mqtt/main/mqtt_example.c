@@ -487,7 +487,7 @@ void mqtt_task(void *pvParameter)
         HAL_SetDeviceName(DEVICE_NAME);
         HAL_SetDeviceSecret(DEVICE_SECRET);
 
-        ESP_LOGI(TAG, "MQTT client example begin, free heap size:%d", system_get_free_heap_size());
+        ESP_LOGI(TAG, "MQTT client example begin, free heap size:%d", esp_get_free_heap_size());
 
 #ifndef MQTT_ID2_AUTH
         mqtt_client();
@@ -498,7 +498,7 @@ void mqtt_task(void *pvParameter)
         IOT_DumpMemoryStats(IOT_LOG_DEBUG);
         IOT_CloseLog();
 
-        ESP_LOGI(TAG, "MQTT client example end, free heap size:%d", system_get_free_heap_size());
+        ESP_LOGI(TAG, "MQTT client example end, free heap size:%d", esp_get_free_heap_size());
     }
 }
 
