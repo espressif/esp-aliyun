@@ -824,9 +824,9 @@ static int iotx_thing_service_request_proc(iotx_thing_masterlave_pt thing_t,
             temp = strstr(topic, "/thing/service");
             temp = temp + strlen("/thing/service/");   
             service_type = IOTX_Thing_SERVICE_TYPE_UNDEFINED; 
-            service_id = temp;
         }         
-
+        service_id = temp + 1;
+        
         /* parse payload */  
         GET_JSON_VALUE(node, "id", payload); 
         message_id = atoi(node);
