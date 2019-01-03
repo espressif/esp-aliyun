@@ -297,8 +297,7 @@ int mqtt_client(void)
 #endif
 
         /* handle the MQTT packet received from TCP or SSL connection */
-        IOT_MQTT_Yield(pclient, 200);
-        HAL_SleepMs(500);
+        IOT_MQTT_Yield(pclient, CONFIG_DEVICE_YIELD_TIME);
     } while (1);
 
     IOT_MQTT_Yield(pclient, 200);

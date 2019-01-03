@@ -31,5 +31,12 @@ config DEVICE_SECRET
 	default ""
 	help
 		fetch it from aliyun console.
+		
+config DEVICE_YIELD_TIME
+    int "the timeout in millisecond in the handle MQTT packet"
+    default 500
+    range 500 1000
+    help
+        Handle timeout which include the MQTT subscribe, unsubscribe, publish(QOS >= 1).
 
 endmenu
