@@ -234,7 +234,7 @@ int HAL_GetPartnerID(char *pid_str)
 {
     memset(pid_str, 0x0, PID_STRLEN_MAX);
 #ifdef __DEMO__
-    strcpy(pid_str, "example.demo.partner-id");
+    strcpy(pid_str, "espressif");
 #endif
     return strlen(pid_str);
 }
@@ -243,7 +243,7 @@ int HAL_GetModuleID(char *mid_str)
 {
     memset(mid_str, 0x0, MID_STRLEN_MAX);
 #ifdef __DEMO__
-    strcpy(mid_str, "example.demo.module-id");
+    strcpy(mid_str, "-wroom-");
 #endif
     return strlen(mid_str);
 }
@@ -253,7 +253,11 @@ char *HAL_GetChipID(_OU_ char *cid_str)
 {
     memset(cid_str, 0x0, HAL_CID_LEN);
 #ifdef __DEMO__
-    strncpy(cid_str, "rtl8188eu 12345678", HAL_CID_LEN);
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    strncpy(cid_str, "esp8266", HAL_CID_LEN);
+#else
+    strncpy(cid_str, "esp32", HAL_CID_LEN);
+#endif
     cid_str[HAL_CID_LEN - 1] = '\0';
 #endif
     return cid_str;
