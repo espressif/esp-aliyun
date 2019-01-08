@@ -10,12 +10,15 @@
 #include "iot_import.h"
 #include "iot_export.h"
 #include "app_entry.h"
+#include "esp_system.h"
+#include "esp_log.h"
 
-#define PRODUCT_KEY             "a1MZxOdcBnO"
-#define PRODUCT_SECRET          "h4I4dneEFp7EImTv"
-#define DEVICE_NAME             "test_01"
-#define DEVICE_SECRET           "t9GmMf2jb3LgWfXBaZD2r3aJrfVWBv56"
-
+// #define PRODUCT_KEY             NULL
+#define PRODUCT_KEY             "a1eZNKneIjv"
+#define PRODUCT_SECRET          "a4dtHXrWR8WzdlwP"
+#define DEVICE_NAME             "E001"
+#define DEVICE_SECRET           "cEMN1TJbyXFIgeXnnTKa5dDX2ZX6XcpT"
+      
 /* These are pre-defined topics */
 #define TOPIC_UPDATE            "/"PRODUCT_KEY"/"DEVICE_NAME"/update"
 #define TOPIC_ERROR             "/"PRODUCT_KEY"/"DEVICE_NAME"/update/error"
@@ -33,6 +36,8 @@
 
 static int      user_argc;
 static char   **user_argv;
+
+static const char *TAG = "MQTT";
 
 void event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg)
 {
@@ -238,15 +243,15 @@ int mqtt_client(void)
         EXAMPLE_TRACE("packet-id=%u, publish topic msg=%s", (uint32_t)rc, msg_pub);
 
         /* handle the MQTT packet received from TCP or SSL connection */
-        IOT_MQTT_Yield(pclient, 200);
+        IOT_MQTT_Yield(pclient, 1000);
 
         /* infinite loop if running with 'loop' argument */
         if (user_argc >= 2 && !strcmp("loop", user_argv[1])) {
-            HAL_SleepMs(2000);
-            cnt = 0;
+            // HAL_SleepMs(2000);
+            // cnt = 0;
         }
-
-    } while (cnt < 1);
+        ESP_LOGI(TAG, "min:%u heap:%u", esp_get_minimum_free_heap_size(), esp_get_free_heap_size());
+    } while (cnt);
 
     IOT_MQTT_Yield(pclient, 200);
 
