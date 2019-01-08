@@ -1,26 +1,30 @@
 /*
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
-
-
-
-
 #include "iot_import.h"
-
-#include "openssl/crypto.h"
-#include "openssl/x509.h"
-#include "openssl/pem.h"
 #include "openssl/ssl.h"
-#include "openssl/err.h"
 #include "iotx_hal_internal.h"
 
 static SSL_CTX *ssl_ctx = NULL;
 static X509_STORE *ca_store = NULL;
 static X509 *ca = NULL;
 
+#ifdef CONFIG_SSL_USING_WOLFSSL
+WOLFSSL_X509 *wolfSSL_PEM_read_bio_X509(WOLFSSL_BIO *bp, WOLFSSL_X509 **x,
+                                                 pem_password_cb *cb, void *u);
 
-#pragma comment(lib,"libeay32.lib")
-#pragma comment(lib,"ssleay32.lib")
+void wolfSSL_X509_STORE_free(WOLFSSL_X509_STORE* store);
+
+#define X509_STORE_free wolfSSL_X509_STORE_free
+
+#endif
+
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+uint32_t GetTickCount()
+{
+    return clock() * (1000 / CLOCKS_PER_SEC);
+}
+#endif
 
 static X509 *ssl_load_cert(const char *cert_str)
 {
@@ -100,9 +104,11 @@ end:
 
 static int ssl_init(const char *my_ca)
 {
+#if 0
     if (ssl_ca_store_init(my_ca) != 0) {
         return -1;
     }
+#endif
 
     if (!ssl_ctx) {
         SSL_METHOD *meth;
@@ -129,7 +135,7 @@ static int ssl_establish(int sock, SSL **ppssl)
 {
     int err;
     SSL *ssl_temp;
-    X509 *server_cert;
+    X509 *server_cert = NULL;
 
     if (!ssl_ctx) {
         hal_err("no ssl context to create ssl connection \n");
@@ -139,6 +145,9 @@ static int ssl_establish(int sock, SSL **ppssl)
     ssl_temp = SSL_new(ssl_ctx);
 
     SSL_set_fd(ssl_temp, sock);
+
+    SSL_set_verify(ssl_temp, SSL_VERIFY_NONE, NULL);
+
     err = SSL_connect(ssl_temp);
 
     if (err == -1) {
@@ -146,13 +155,14 @@ static int ssl_establish(int sock, SSL **ppssl)
         goto err;
     }
 
+#if 0
     server_cert = SSL_get_peer_certificate(ssl_temp);
 
     if (!server_cert) {
         hal_err("failed to get server cert");
         goto err;
     }
-
+    
     /* if (ssl_verify_ca(server_cert) != 0) */
     /* { */
     /*     goto err; */
@@ -161,6 +171,7 @@ static int ssl_establish(int sock, SSL **ppssl)
     X509_free(server_cert);
 
     hal_info("success to verify cert \n");
+#endif
 
     *ppssl = (void *)ssl_temp;
 
@@ -348,6 +359,9 @@ uintptr_t HAL_SSL_Establish(const char *host,
 int32_t HAL_SSL_Destroy(uintptr_t handle)
 {
     struct ssl_info_st *h = (struct ssl_info_st *)handle;
+    if(!h) {
+        return 0;
+    }
 
     hal_info("close ssl connection\n");
 
@@ -373,4 +387,18 @@ int HAL_SSL_Write(uintptr_t handle, const char *buf, int len, int timeout_ms)
 {
     timeout_ms = timeout_ms;
     return platform_ssl_send((void *)(((struct ssl_info_st *)handle)->ssl), buf, len);
+}
+
+static ssl_hooks_t g_ssl_hooks = {HAL_Malloc, HAL_Free};
+
+int HAL_SSLHooks_set(ssl_hooks_t *hooks)
+{
+    if (hooks == NULL || hooks->malloc == NULL || hooks->free == NULL) {
+        return DTLS_INVALID_PARAM;
+    }
+
+    g_ssl_hooks.malloc = hooks->malloc;
+    g_ssl_hooks.free = hooks->free;
+
+    return DTLS_SUCCESS;
 }
