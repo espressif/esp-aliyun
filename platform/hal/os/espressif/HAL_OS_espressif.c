@@ -9,30 +9,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <memory.h>
+
+// #include <time.h>
+// #include <sys/time.h>
+// #include <unistd.h>  /* _POSIX_TIMERS */
+
 
 #include <pthread.h>
 #include <unistd.h>
-#include <sys/prctl.h>
 #include <sys/time.h>
-#include <semaphore.h>
 #include <errno.h>
 #include <assert.h>
-#include <net/if.h>       // struct ifreq
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
-#include <sys/reboot.h>
 #include <sys/time.h>
 #include <time.h>
 #include <signal.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
-#include "kv.h"
+
+#include "nvs.h"
 
 #define __DEMO__
+
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 0
+#endif
+
+#ifndef sem_t
+typedef SemaphoreHandle_t sem_t;
+#endif
 
 #ifdef __DEMO__
     char _product_key[PRODUCT_KEY_LEN + 1];
@@ -109,6 +121,20 @@ void HAL_Free(_IN_ void *ptr)
     free(ptr);
 }
 
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+int clock_gettime(int clk_id, struct timespec *t)
+{
+    struct timeval now;
+    int rv = gettimeofday(&now, NULL);
+    if (rv) {
+        return rv;
+    }
+    t->tv_sec  = now.tv_sec;
+    t->tv_nsec = now.tv_usec * 1000;
+    return 0;
+}
+#endif
+
 #ifdef __APPLE__
 uint64_t HAL_UptimeMs(void)
 {
@@ -160,7 +186,15 @@ void HAL_SleepMs(_IN_ uint32_t ms)
 
 void HAL_Srandom(uint32_t seed)
 {
+    // espressif does not need a seed for esp_random()
+#if 0
     srandom(seed);
+#endif
+}
+
+uint32_t random(void)
+{
+    return esp_random();
 }
 
 uint32_t HAL_Random(uint32_t region)
@@ -367,52 +401,25 @@ void *HAL_SemaphoreCreate(void)
         return NULL;
     }
 
-    if (0 != sem_init(sem, 0, 0)) {
-        free(sem);
-        return NULL;
-    }
+    *sem =xSemaphoreCreateMutex();
 
     return sem;
 }
 
 void HAL_SemaphoreDestroy(_IN_ void *sem)
 {
-    sem_destroy((sem_t *)sem);
+    vSemaphoreDelete(*(sem_t*)sem);
     free(sem);
 }
 
 void HAL_SemaphorePost(_IN_ void *sem)
 {
-    sem_post((sem_t *)sem);
+    xSemaphoreGive(*(sem_t*)sem);
 }
 
 int HAL_SemaphoreWait(_IN_ void *sem, _IN_ uint32_t timeout_ms)
 {
-    if (PLATFORM_WAIT_INFINITE == timeout_ms) {
-        sem_wait(sem);
-        return 0;
-    } else {
-        struct timespec ts;
-        int s;
-        /* Restart if interrupted by handler */
-        do {
-            if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-                return -1;
-            }
-
-            s = 0;
-            ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-            if (ts.tv_nsec >= 1000000000) {
-                ts.tv_nsec -= 1000000000;
-                s = 1;
-            }
-
-            ts.tv_sec += timeout_ms / 1000 + s;
-
-        } while (((s = sem_timedwait(sem, &ts)) != 0) && errno == EINTR);
-
-        return (s == 0) ? 0 : -1;
-    }
+    return (xSemaphoreTake(*(sem_t*)sem, (portTickType)timeout_ms) == pdPASS) ? 0 : -1;
 }
 
 int HAL_ThreadCreate(
@@ -544,8 +551,11 @@ void HAL_Reboot(void)
 #define ROUTER_INFO_PATH        "/proc/net/route"
 #define ROUTER_RECORD_SIZE      256
 
+
 char *_get_default_routing_ifname(char *ifname, int ifname_size)
 {
+    return NULL;
+#if 0
     FILE *fp = NULL;
     char line[ROUTER_RECORD_SIZE] = {0};
     char iface[IFNAMSIZ] = {0};
@@ -588,11 +598,14 @@ out:
     }
 
     return result;
+#endif
 }
 
 
 uint32_t HAL_Wifi_Get_IP(char ip_str[NETWORK_ADDR_LEN], const char *ifname)
 {
+    return 0;
+#if 0
     struct ifreq ifreq;
     int sock = -1;
     char ifname_buff[IFNAMSIZ] = {0};
@@ -624,44 +637,36 @@ uint32_t HAL_Wifi_Get_IP(char ip_str[NETWORK_ADDR_LEN], const char *ifname)
             NETWORK_ADDR_LEN);
 
     return ((struct sockaddr_in *)&ifreq.ifr_addr)->sin_addr.s_addr;
+#endif
 }
 
-static kv_file_t *kvfile = NULL;
+static const char *NVS_KV = "kv data";
 
 int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
 {
-    if (!kvfile) {
-        kvfile = kv_open("/tmp/kvfile.db");
-        if (!kvfile) {
-            return -1;
-        }
-    }
-
-    return kv_set_blob(kvfile, (char *)key, (char *)val, len);
+    nvs_handle handle;
+    nvs_open( NVS_KV, NVS_READWRITE, &handle);
+    nvs_set_blob( handle, key, val, len);
+    nvs_close(handle);
+    return 0;
 }
 
 int HAL_Kv_Get(const char *key, void *buffer, int *buffer_len)
 {
-    if (!kvfile) {
-        kvfile = kv_open("/tmp/kvfile.db");
-        if (!kvfile) {
-            return -1;
-        }
-    }
-
-    return kv_get_blob(kvfile, (char *)key, buffer, buffer_len);
+    nvs_handle handle;
+    nvs_open(NVS_KV, NVS_READWRITE, &handle);
+    nvs_get_blob(handle, key, buffer, (size_t*)buffer_len);
+    nvs_close(handle);
+    return 0;
 }
 
 int HAL_Kv_Del(const char *key)
 {
-    if (!kvfile) {
-        kvfile = kv_open("/tmp/kvfile.db");
-        if (!kvfile) {
-            return -1;
-        }
-    }
-
-    return kv_del(kvfile, (char *)key);
+    nvs_handle handle;
+    nvs_open( NVS_KV, NVS_READWRITE, &handle);
+    nvs_erase_key( handle, key);
+    nvs_close(handle);
+    return 0;
 }
 
 static long long os_time_get(void)
@@ -687,6 +692,8 @@ long long HAL_UTC_Get(void)
 
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
 {
+    return NULL;
+#if 0
     timer_t *timer = NULL;
 
     struct sigevent ent;
@@ -714,10 +721,13 @@ void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
     }
 
     return (void *)timer;
+#endif
 }
 
 int HAL_Timer_Start(void *timer, int ms)
 {
+    return 0;
+#if 0
     struct itimerspec ts;
 
     /* check parameter */
@@ -734,10 +744,13 @@ int HAL_Timer_Start(void *timer, int ms)
     ts.it_value.tv_nsec = (ms % 1000) * 1000;
 
     return timer_settime(*(timer_t *)timer, 0, &ts, NULL);
+#endif
 }
 
 int HAL_Timer_Stop(void *timer)
 {
+    return 0;
+#if 0
     struct itimerspec ts;
 
     /* check parameter */
@@ -754,10 +767,13 @@ int HAL_Timer_Stop(void *timer)
     ts.it_value.tv_nsec = 0;
 
     return timer_settime(*(timer_t *)timer, 0, &ts, NULL);
+#endif
 }
 
 int HAL_Timer_Delete(void *timer)
 {
+    return 0;
+#if 0
     int ret = 0;
 
     /* check parameter */
@@ -770,10 +786,13 @@ int HAL_Timer_Delete(void *timer)
     free(timer);
 
     return ret;
+#endif
 }
 
 int HAL_GetNetifInfo(char *nif_str)
 {
+    return 0;
+#if 0
     memset(nif_str, 0x0, NIF_STRLEN_MAX);
 #ifdef __DEMO__
     /* if the device have only WIFI, then list as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
@@ -784,4 +803,5 @@ int HAL_GetNetifInfo(char *nif_str)
     // strncpy(nif_str, multi_net_info, strlen(multi_net_info));
 #endif
     return strlen(nif_str);
+#endif
 }

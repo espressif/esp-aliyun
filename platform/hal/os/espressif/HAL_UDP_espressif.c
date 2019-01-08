@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -161,7 +160,7 @@ int HAL_UDP_readTimeout(intptr_t p_socket,
 intptr_t HAL_UDP_create_without_connect(_IN_ const char *host, _IN_ unsigned short port)
 {
     struct sockaddr_in addr;
-    long sockfd;
+    int sockfd;
     int opt_val = 1;
     struct hostent *hp;
     struct in_addr in;

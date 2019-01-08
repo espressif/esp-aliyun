@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <memory.h>
+// #include <memory.h>
 #include <stdlib.h>
 #include <string.h>
 #if defined(_PLATFORM_IS_LINUX_)

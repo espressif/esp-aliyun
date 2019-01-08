@@ -8,13 +8,15 @@
 #ifndef __PLATFORM_DEBUG_H__
 #define __PLATFORM_DEBUG_H__
 
-#include "iotx_log.h"
+#include "esp_log.h"
 
-#define hal_emerg(...)      HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
-#define hal_crit(...)       HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
-#define hal_err(...)        HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
-#define hal_warning(...)    HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
-#define hal_info(...)       HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
-#define hal_debug(...)      HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
+static const char* TAG = "in";
+
+#define hal_emerg(...)      ESP_LOGE(TAG, __VA_ARGS__)
+#define hal_crit(...)       ESP_LOGE(TAG, __VA_ARGS__)
+#define hal_err(...)        ESP_LOGE(TAG, __VA_ARGS__)
+#define hal_warning(...)    ESP_LOGW(TAG, __VA_ARGS__)
+#define hal_info(...)       ESP_LOGI(TAG, __VA_ARGS__)
+#define hal_debug(...)      ESP_LOGD(TAG, __VA_ARGS__)
 
 #endif  /* __PLATFORM_DEBUG_H__ */
