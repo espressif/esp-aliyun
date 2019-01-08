@@ -34,6 +34,7 @@
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
 
+#include "esp_wifi.h"
 #include "nvs.h"
 
 #define __DEMO__
@@ -243,7 +244,7 @@ int HAL_GetModuleID(char *mid_str)
 {
     memset(mid_str, 0x0, MID_STRLEN_MAX);
 #ifdef __DEMO__
-    strcpy(mid_str, "-wroom-");
+    strcpy(mid_str, "wroom");
 #endif
     return strlen(mid_str);
 }
@@ -795,7 +796,26 @@ int HAL_Timer_Delete(void *timer)
 
 int HAL_GetNetifInfo(char *nif_str)
 {
-    return 0;
+#define MAC_ADDR_LEN    6
+
+    static char* mac = NULL;
+
+    if(mac == NULL) {
+        mac = (char*)malloc(MAC_ADDR_LEN);
+    }
+    if(mac == NULL) {
+        hal_err("malloc failed");
+        return NULL;
+    } else {
+        memset(mac, 0x0, MAC_ADDR_LEN);
+    }
+
+    if( esp_wifi_get_mac(ESP_IF_WIFI_STA, (uint8_t*)mac) != ESP_OK) {
+        return NULL;
+    }
+
+    return snprintf(nif_str, NIF_STRLEN_MAX, "WiFi|%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
 #if 0
     memset(nif_str, 0x0, NIF_STRLEN_MAX);
 #ifdef __DEMO__
