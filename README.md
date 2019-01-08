@@ -82,20 +82,22 @@ make menuconfig
 - 配置 `WIFI_SSID`, `WIFI_PASSWORD`
 
 ### 6.1.3 编译 SDK
-1. 生成 `libiot_sdk.a`
+1.生成 `libiot_sdk.a`
+
 ```
 cd iotkit-embedded
 make reconfig
 # 选择 esp8266 或 esp32 平台
 make
 ```
-> 注: `iotkit-embedded` 当前暂未集成 ESP32 平台, 我们可以将 `config.esp8266.aos`, 复制一份保存为 `config.esp32.aos`.
->   编译器 `CROSS_PREFIX` 改为 `:= xtensa-esp32-elf-`
->   `BOARD_ESP8266` 改为 `BOARD_ESP32`
->   `ESPOS_FOR_ESP8266` 改为 `ESPOS_FOR_ESP32`
-> 待阿里合入 [PR](https://github.com/aliyun/iotkit-embedded/pull/119) 后, 即忽略此处
+> 注: `iotkit-embedded` 当前暂未集成 ESP32 平台, 我们可以将 `config.esp8266.aos`, 复制一份保存为 `config.esp32.aos`.  
+>   编译器 `CROSS_PREFIX` 改为 `:= xtensa-esp32-elf-`  
+>   `BOARD_ESP8266` 改为 `BOARD_ESP32`  
+>   `ESPOS_FOR_ESP8266` 改为 `ESPOS_FOR_ESP32`  
+> 待阿里合入 [PR](https://github.com/aliyun/iotkit-embedded/pull/119) 后, 即忽略此处  
 
-1. 生成最终 bin
+2.生成最终 bin
+
 ```
 cd examples/mqtt_example
 make
