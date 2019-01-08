@@ -14,8 +14,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <netinet/tcp.h>
 #include <netdb.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
@@ -47,6 +49,7 @@ static uint64_t _linux_time_left(uint64_t t_end, uint64_t t_now)
 
 uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 {
+#if 0
     struct addrinfo hints;
     struct addrinfo *addrInfoList = NULL;
     struct addrinfo *cur = NULL;
@@ -82,6 +85,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
             continue;
         }
 
+        printf("fd:%d addr:%s port:%d\n" ,fd, cur->ai_addr->sin_addr.saddr,  cur->ai_addr->sin_port);
         if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
             rc = fd;
             break;
@@ -100,6 +104,61 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     freeaddrinfo(addrInfoList);
 
     return (uintptr_t)rc;
+#else
+    int32_t ret = 0;
+    int32_t socketfd = -1;
+    struct sockaddr_in sock_addr;
+    struct hostent* entry = NULL;
+
+    do {
+        entry = gethostbyname(host);
+        vTaskDelay(500 / portTICK_RATE_MS);
+    } while (entry == NULL);
+
+    printf("Creat socket ...\n");
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socketfd < 0) {
+        printf("Creat socket failed...\n");
+        return -1;
+    }
+    
+    
+    printf("OK\n");
+
+    printf("bind socket ......");
+    memset(&sock_addr, 0, sizeof(sock_addr));
+    sock_addr.sin_family = AF_INET;
+    sock_addr.sin_addr.s_addr = 0;
+    sock_addr.sin_port = htons(port);
+    ret = bind(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+
+    if (ret) {
+        printf("failed\n");
+        close(socketfd);
+        return -1;
+    }
+
+    printf("OK\n");
+
+    memset(&sock_addr, 0, sizeof(sock_addr));
+    sock_addr.sin_family = AF_INET;
+    sock_addr.sin_port = htons(port);
+    sock_addr.sin_addr.s_addr = ((struct in_addr*)(entry->h_addr))->s_addr;
+
+    hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
+
+    ret = connect(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+
+    if (ret) {
+        printf("Connecting to %s:%d failed: %d\n", host, port, ret);
+        close(socketfd);
+        return -1;
+    }
+    
+    hal_info("OK, fd:%d", socketfd);
+    return socketfd;
+#endif
 }
 
 
