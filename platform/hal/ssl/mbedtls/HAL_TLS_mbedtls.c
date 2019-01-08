@@ -1,23 +1,12 @@
 /*
- * Copyright (c) 2014-2016 Alibaba Group. All rights reserved.
- * License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
+
+
 
 #include <stdio.h>
 #include <string.h>
+#include <memory.h>
 #include <stdlib.h>
 #include <string.h>
 #if defined(_PLATFORM_IS_LINUX_)
@@ -37,15 +26,12 @@
 #include "mbedtls/debug.h"
 #include "mbedtls/platform.h"
 
-#include "esp_system.h"
-
 #include "iot_import.h"
+#include "iotx_hal_internal.h"
 
-#define SEND_TIMEOUT_SECONDS (10)
-
-#ifndef MBEDTLS_ERR_SSL_NON_FATAL
-#define MBEDTLS_ERR_SSL_NON_FATAL                         -0x6680  /**< The alert message received indicates a non-fatal error. */
-#endif
+#define SEND_TIMEOUT_SECONDS                (10)
+#define GUIDER_ONLINE_HOSTNAME              ("iot-auth.cn-shanghai.aliyuncs.com")
+#define GUIDER_PRE_ADDRESS                  ("100.67.80.107")
 
 typedef struct _TLSDataParams {
     mbedtls_ssl_context ssl;          /**< mbed TLS control context. */
@@ -56,12 +42,21 @@ typedef struct _TLSDataParams {
     mbedtls_pk_context pkey;          /**< mbed TLS Client key. */
 } TLSDataParams_t, *TLSDataParams_pt;
 
-#define SSL_LOG(format, ...) \
-    do { \
-        printf("[inf] %s(%d): "format"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-    }while(0)
+static unsigned int mbedtls_mem_used = 0;
+static unsigned int mbedtls_max_mem_used = 0;
+static ssl_hooks_t g_ssl_hooks = {HAL_Malloc, HAL_Free};
 
-#define DEBUG_LEVEL 10
+#define MBEDTLS_MEM_INFO_MAGIC   0x12345678
+
+typedef struct {
+    int magic;
+    int size;
+} mbedtls_mem_info_t;
+
+static unsigned int _avRandom()
+{
+    return (((unsigned int)rand() << 16) + rand());
+}
 
 static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
 {
@@ -69,82 +64,52 @@ static int _ssl_random(void *p_rng, unsigned char *output, size_t output_len)
     uint8_t   rngoffset = 0;
 
     while (rnglen > 0) {
-        *(output + rngoffset) = (unsigned char)esp_random();
+        *(output + rngoffset) = (unsigned char)_avRandom() ;
         rngoffset++;
         rnglen--;
     }
     return 0;
 }
 
+static void _ssl_debug(void *ctx, int level, const char *file, int line, const char *str)
+{
+    ((void) level);
+    if (NULL != ctx) {
+#if 0
+        fprintf((FILE *) ctx, "%s:%04d: %s", file, line, str);
+        fflush((FILE *) ctx);
+#endif
+        hal_info("%s", str);
+    }
+}
+
 static int _real_confirm(int verify_result)
 {
-    SSL_LOG("certificate verification result: 0x%02x", verify_result);
+    hal_info("certificate verification result: 0x%02x", verify_result);
 
 #if defined(FORCE_SSL_VERIFY)
     if ((verify_result & MBEDTLS_X509_BADCERT_EXPIRED) != 0) {
-        SSL_LOG("! fail ! ERROR_CERTIFICATE_EXPIRED");
+        hal_err("! fail ! ERROR_CERTIFICATE_EXPIRED");
         return -1;
     }
 
     if ((verify_result & MBEDTLS_X509_BADCERT_REVOKED) != 0) {
-        SSL_LOG("! fail ! server certificate has been revoked");
+        hal_err("! fail ! server certificate has been revoked");
         return -1;
     }
 
     if ((verify_result & MBEDTLS_X509_BADCERT_CN_MISMATCH) != 0) {
-        SSL_LOG("! fail ! CN mismatch");
+        hal_err("! fail ! CN mismatch");
         return -1;
     }
 
     if ((verify_result & MBEDTLS_X509_BADCERT_NOT_TRUSTED) != 0) {
-        SSL_LOG("! fail ! self-signed or not signed by a trusted CA");
+        hal_err("! fail ! self-signed or not signed by a trusted CA");
         return -1;
     }
 #endif
 
     return 0;
-}
-
-static int _ssl_parse_crt(mbedtls_x509_crt *crt)
-{
-    char *buf = NULL;
-    buf = (char*)calloc(1, 1024);
-    if (!buf) {
-        return -1;
-    }
-    mbedtls_x509_crt *local_crt = crt;
-    int i = 0;
-    while (local_crt) {
-        mbedtls_x509_crt_info(buf, sizeof(buf) - 1, "", local_crt);
-        {
-            char *str = NULL;
-            str = (char*)calloc(1, 512);
-            if (!str) {
-                free(buf);
-                return -1;
-            }
-            const char *start, *cur;
-            start = buf;
-            for (cur = buf; *cur != '\0'; cur++) {
-                if (*cur == '\n') {
-                    size_t len = cur - start + 1;
-                    if (len > 511) {
-                        len = 511;
-                    }
-                    memcpy(str, start, len);
-                    str[len] = '\0';
-                    start = cur + 1;
-                    HAL_Printf("%s", str);
-                }
-            }
-            free(str);
-        }
-        SSL_LOG("crt content:%u", (uint32_t)strlen(buf));
-        local_crt = local_crt->next;
-        i++;
-    }
-    free(buf);
-    return i;
 }
 
 static int _ssl_client_init(mbedtls_ssl_context *ssl,
@@ -161,7 +126,7 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
      * 0. Initialize the RNG and the session data
      */
 #if defined(MBEDTLS_DEBUG_C)
-    mbedtls_debug_set_threshold((int)DEBUG_LEVEL);
+    mbedtls_debug_set_threshold((int)CONFIG_MBEDTLS_DEBUG_LEVEL);
 #endif
     mbedtls_net_init(tcp_fd);
     mbedtls_ssl_init(ssl);
@@ -172,15 +137,14 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
      * 0. Initialize certificates
      */
 
-    SSL_LOG("Loading the CA root certificate ...");
+    hal_info("Loading the CA root certificate ...");
     if (NULL != ca_crt) {
         if (0 != (ret = mbedtls_x509_crt_parse(crt509_ca, (const unsigned char *)ca_crt, ca_len))) {
-            SSL_LOG(" failed ! x509parse_crt returned -0x%04x", -ret);
+            hal_err(" failed ! x509parse_crt returned -0x%04x", -ret);
             return ret;
         }
     }
-    _ssl_parse_crt(crt509_ca);
-    SSL_LOG(" ok (%d skipped)", ret);
+    hal_info(" ok (%d skipped)", ret);
 
 
     /* Setup Client Cert/Key */
@@ -191,31 +155,31 @@ static int _ssl_client_init(mbedtls_ssl_context *ssl,
 #endif
     if (cli_crt != NULL && cli_key != NULL) {
 #if defined(MBEDTLS_CERTS_C)
-        SSL_LOG("start prepare client cert .");
+        hal_info("start prepare client cert .");
         ret = mbedtls_x509_crt_parse(crt509_cli, (const unsigned char *) cli_crt, cli_len);
 #else
         {
             ret = 1;
-            SSL_LOG("MBEDTLS_CERTS_C not defined.");
+            hal_err("MBEDTLS_CERTS_C not defined.");
         }
 #endif
         if (ret != 0) {
-            SSL_LOG(" failed!  mbedtls_x509_crt_parse returned -0x%x\n", -ret);
+            hal_err(" failed!  mbedtls_x509_crt_parse returned -0x%x\n", -ret);
             return ret;
         }
 
 #if defined(MBEDTLS_CERTS_C)
-        SSL_LOG("start mbedtls_pk_parse_key[%s]", cli_pwd);
+        hal_info("start mbedtls_pk_parse_key[%s]", cli_pwd);
         ret = mbedtls_pk_parse_key(pk_cli, (const unsigned char *) cli_key, key_len, (const unsigned char *) cli_pwd, pwd_len);
 #else
         {
             ret = 1;
-            SSL_LOG("MBEDTLS_CERTS_C not defined.");
+            hal_err("MBEDTLS_CERTS_C not defined.");
         }
 #endif
 
         if (ret != 0) {
-            SSL_LOG(" failed\n  !  mbedtls_pk_parse_key returned -0x%x\n", -ret);
+            hal_err(" failed\n  !  mbedtls_pk_parse_key returned -0x%x\n", -ret);
             return ret;
         }
     }
@@ -272,6 +236,8 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
     /* Try the sockaddrs until a connection succeeds */
     ret = MBEDTLS_ERR_NET_UNKNOWN_HOST;
     for (cur = addr_list; cur != NULL; cur = cur->ai_next) {
+        char ip4_str[INET_ADDRSTRLEN];
+
         ctx->fd = (int) socket(cur->ai_family, cur->ai_socktype,
                                cur->ai_protocol);
         if (ctx->fd < 0) {
@@ -284,10 +250,12 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
 
         if (0 != setsockopt(ctx->fd, SOL_SOCKET, SO_SNDTIMEO, &sendtimeout, sizeof(sendtimeout))) {
             perror("setsockopt");
-            SSL_LOG("setsockopt error");
+            hal_err("setsockopt error");
         }
+        hal_info("setsockopt SO_SNDTIMEO timeout: %ds", sendtimeout.tv_sec);
 
-        SSL_LOG("setsockopt SO_SNDTIMEO timeout: %ds", sendtimeout.tv_sec);
+        inet_ntop(AF_INET, &((const struct sockaddr_in *)cur->ai_addr)->sin_addr, ip4_str, INET_ADDRSTRLEN);
+        hal_info("connecting IP_ADDRESS: %s", ip4_str);
 
         if (connect(ctx->fd, cur->ai_addr, cur->ai_addrlen) == 0) {
             ret = 0;
@@ -304,6 +272,57 @@ static int mbedtls_net_connect_timeout(mbedtls_net_context *ctx, const char *hos
 }
 #endif
 
+void *_SSLCalloc_wrapper(size_t n, size_t size)
+{
+    void *buf = NULL;
+    mbedtls_mem_info_t *mem_info = NULL;
+
+    if (n == 0 || size == 0) {
+        return NULL;
+    }
+
+    buf = g_ssl_hooks.malloc(n * size + sizeof(mbedtls_mem_info_t));
+    if (NULL == buf) {
+        return NULL;
+    } else {
+        memset(buf, 0, n * size + sizeof(mbedtls_mem_info_t));
+    }
+
+    mem_info = (mbedtls_mem_info_t *)buf;
+    mem_info->magic = MBEDTLS_MEM_INFO_MAGIC;
+    mem_info->size = n * size;
+    buf += sizeof(mbedtls_mem_info_t);
+
+    mbedtls_mem_used += mem_info->size;
+    if (mbedtls_mem_used > mbedtls_max_mem_used) {
+        mbedtls_max_mem_used = mbedtls_mem_used;
+    }
+
+    /* hal_info("INFO -- mbedtls malloc: %p %d  total used: %d  max used: %d\r\n",
+                       buf, (int)size, mbedtls_mem_used, mbedtls_max_mem_used); */
+
+    return buf;
+}
+
+void _SSLFree_wrapper(void *ptr)
+{
+    mbedtls_mem_info_t *mem_info = NULL;
+    if (NULL == ptr) {
+        return;
+    }
+
+    mem_info = ptr - sizeof(mbedtls_mem_info_t);
+    if (mem_info->magic != MBEDTLS_MEM_INFO_MAGIC) {
+        hal_info("Warning - invalid mem info magic: 0x%x\r\n", mem_info->magic);
+        return;
+    }
+
+    mbedtls_mem_used -= mem_info->size;
+    /* hal_info("INFO mbedtls free: %p %d  total used: %d  max used: %d\r\n",
+                       ptr, mem_info->size, mbedtls_mem_used, mbedtls_max_mem_used);*/
+
+    g_ssl_hooks.free(mem_info);
+}
 
 /**
  * @brief This function connects to the specific SSL server with TLS, and returns a value that indicates whether the connection is create successfully or not. Call #NewNetwork() to initialize network structure before calling this function.
@@ -335,42 +354,42 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
                                      &(pTlsData->cacertl), ca_crt, ca_crt_len,
                                      &(pTlsData->clicert), client_crt, client_crt_len,
                                      &(pTlsData->pkey), client_key, client_key_len, client_pwd, client_pwd_len))) {
-        SSL_LOG(" failed ! ssl_client_init returned -0x%04x", -ret);
+        hal_err(" failed ! ssl_client_init returned -0x%04x", -ret);
         return ret;
     }
 
     /*
      * 1. Start the connection
      */
-    SSL_LOG("Connecting to /%s/%s...", addr, port);
+    hal_info("Connecting to /%s/%s...", addr, port);
 #if defined(_PLATFORM_IS_LINUX_)
     if (0 != (ret = mbedtls_net_connect_timeout(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP,
                     SEND_TIMEOUT_SECONDS))) {
-        SSL_LOG(" failed ! net_connect returned -0x%04x", -ret);
+        hal_err(" failed ! net_connect returned -0x%04x", -ret);
         return ret;
     }
 #else
     if (0 != (ret = mbedtls_net_connect(&(pTlsData->fd), addr, port, MBEDTLS_NET_PROTO_TCP))) {
-        SSL_LOG(" failed ! net_connect returned -0x%04x", -ret);
+        hal_err(" failed ! net_connect returned -0x%04x", -ret);
         return ret;
     }
 #endif
-    SSL_LOG(" ok");
+    hal_info(" ok");
 
     /*
      * 2. Setup stuff
      */
-    SSL_LOG("  . Setting up the SSL/TLS structure...");
+    hal_info("  . Setting up the SSL/TLS structure...");
     if ((ret = mbedtls_ssl_config_defaults(&(pTlsData->conf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM,
                                            MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
-        SSL_LOG(" failed! mbedtls_ssl_config_defaults returned %d", ret);
+        hal_err(" failed! mbedtls_ssl_config_defaults returned %d", ret);
         return ret;
     }
 
     mbedtls_ssl_conf_max_version(&pTlsData->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
     mbedtls_ssl_conf_min_version(&pTlsData->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
 
-    SSL_LOG(" ok");
+    hal_info(" ok");
 
     /* OPTIONAL is not optimal for security, but makes interop easier in this simplified example */
     if (ca_crt != NULL) {
@@ -387,41 +406,43 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
     mbedtls_ssl_conf_ca_chain(&(pTlsData->conf), &(pTlsData->cacertl), NULL);
 
     if ((ret = mbedtls_ssl_conf_own_cert(&(pTlsData->conf), &(pTlsData->clicert), &(pTlsData->pkey))) != 0) {
-        SSL_LOG(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n", ret);
+        hal_err(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n", ret);
         return ret;
     }
 #endif
     mbedtls_ssl_conf_rng(&(pTlsData->conf), _ssl_random, NULL);
-
-#ifdef CONFIG_MBEDTLS_DEBUG
-    mbedtls_esp_enable_debug_log(&(pTlsData->conf), 4);
-#endif
+    mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, NULL);
+    mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, stdout);
 
     if ((ret = mbedtls_ssl_setup(&(pTlsData->ssl), &(pTlsData->conf))) != 0) {
-        SSL_LOG("failed! mbedtls_ssl_setup returned %d", ret);
+        hal_err("failed! mbedtls_ssl_setup returned %d", ret);
         return ret;
     }
+#if defined(ON_PRE) || defined(ON_DAILY)
+    hal_err("SKIPPING mbedtls_ssl_set_hostname() when ON_PRE or ON_DAILY defined!");
+#else
     mbedtls_ssl_set_hostname(&(pTlsData->ssl), addr);
+#endif
     mbedtls_ssl_set_bio(&(pTlsData->ssl), &(pTlsData->fd), mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
 
     /*
       * 4. Handshake
       */
-    SSL_LOG("Performing the SSL/TLS handshake...");
+    hal_info("Performing the SSL/TLS handshake...");
 
     while ((ret = mbedtls_ssl_handshake(&(pTlsData->ssl))) != 0) {
         if ((ret != MBEDTLS_ERR_SSL_WANT_READ) && (ret != MBEDTLS_ERR_SSL_WANT_WRITE)) {
-            SSL_LOG("failed  ! mbedtls_ssl_handshake returned -0x%04x", -ret);
+            hal_err("failed  ! mbedtls_ssl_handshake returned -0x%04x", -ret);
             return ret;
         }
     }
-    SSL_LOG(" ok");
+    hal_info(" ok");
     /*
      * 5. Verify the server certificate
      */
-    SSL_LOG("  . Verifying peer X.509 certificate..");
+    hal_info("  . Verifying peer X.509 certificate..");
     if (0 != (ret = _real_confirm(mbedtls_ssl_get_verify_result(&(pTlsData->ssl))))) {
-        SSL_LOG(" failed  ! verify result not confirmed.");
+        hal_err(" failed  ! verify result not confirmed.");
         return ret;
     }
     /* n->my_socket = (int)((n->tlsdataparams.fd).fd); */
@@ -438,9 +459,6 @@ static int _network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, i
     int             ret = -1;
     char            err_str[33];
 
-    // TODO: remove timeout_ms=0 workaround when mqtt_client.c fixes iotx_mc_read_packet
-    timeout_ms += 1;
-
     mbedtls_ssl_conf_read_timeout(&(pTlsData->conf), timeout_ms);
     while (readLen < len) {
         ret = mbedtls_ssl_read(&(pTlsData->ssl), (unsigned char *)(buffer + readLen), (len - readLen));
@@ -453,7 +471,7 @@ static int _network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, i
         } else {
             if (MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY == ret) {
                 mbedtls_strerror(ret, err_str, sizeof(err_str));
-                SSL_LOG("ssl recv error: code = %d, err_str = '%s'", ret, err_str);
+                hal_err("ssl recv error: code = %d, err_str = '%s'", ret, err_str);
                 net_status = -2; /* connection is closed */
                 break;
             } else if ((MBEDTLS_ERR_SSL_TIMEOUT == ret)
@@ -466,7 +484,7 @@ static int _network_ssl_read(TLSDataParams_t *pTlsData, char *buffer, int len, i
                 return readLen;
             } else {
                 mbedtls_strerror(ret, err_str, sizeof(err_str));
-                SSL_LOG("ssl recv error: code = %d, err_str = '%s'", ret, err_str);
+                hal_err("ssl recv error: code = %d, err_str = '%s'", ret, err_str);
                 net_status = -1;
                 return -1; /* Connection error */
             }
@@ -487,12 +505,12 @@ static int _network_ssl_write(TLSDataParams_t *pTlsData, const char *buffer, int
             writtenLen += ret;
             continue;
         } else if (ret == 0) {
-            SSL_LOG("ssl write timeout");
+            hal_err("ssl write timeout");
             return 0;
         } else {
             char err_str[33];
             mbedtls_strerror(ret, err_str, sizeof(err_str));
-            SSL_LOG("ssl write fail, code=%d, str=%s", ret, err_str);
+            hal_err("ssl write fail, code=%d, str=%s", ret, err_str);
             return -1; /* Connnection error */
         }
     }
@@ -507,7 +525,7 @@ static void _network_ssl_disconnect(TLSDataParams_t *pTlsData)
 #if defined(MBEDTLS_X509_CRT_PARSE_C)
     mbedtls_x509_crt_free(&(pTlsData->cacertl));
     if ((pTlsData->pkey).pk_info != NULL) {
-        SSL_LOG("need release client crt&key");
+        hal_info("need release client crt&key");
 #if defined(MBEDTLS_CERTS_C)
         mbedtls_x509_crt_free(&(pTlsData->clicert));
         mbedtls_pk_free(&(pTlsData->pkey));
@@ -516,7 +534,7 @@ static void _network_ssl_disconnect(TLSDataParams_t *pTlsData)
 #endif
     mbedtls_ssl_free(&(pTlsData->ssl));
     mbedtls_ssl_config_free(&(pTlsData->conf));
-    SSL_LOG("ssl_disconnect");
+    hal_info("ssl_disconnect");
 }
 
 int HAL_SSL_Read(uintptr_t handle, char *buf, int len, int timeout_ms)
@@ -532,13 +550,25 @@ int HAL_SSL_Write(uintptr_t handle, const char *buf, int len, int timeout_ms)
 int32_t HAL_SSL_Destroy(uintptr_t handle)
 {
     if ((uintptr_t)NULL == handle) {
-        SSL_LOG("handle is NULL");
+        hal_err("handle is NULL");
         return 0;
     }
 
     _network_ssl_disconnect((TLSDataParams_t *)handle);
-    HAL_Free((void *)handle);
+    g_ssl_hooks.free((void *)handle);
     return 0;
+}
+
+int HAL_SSLHooks_set(ssl_hooks_t *hooks)
+{
+    if (hooks == NULL || hooks->malloc == NULL || hooks->free == NULL) {
+        return DTLS_INVALID_PARAM;
+    }
+
+    g_ssl_hooks.malloc = hooks->malloc;
+    g_ssl_hooks.free = hooks->free;
+
+    return DTLS_SUCCESS;
 }
 
 uintptr_t HAL_SSL_Establish(const char *host,
@@ -546,10 +576,11 @@ uintptr_t HAL_SSL_Establish(const char *host,
                             const char *ca_crt,
                             size_t ca_crt_len)
 {
-    char port_str[6];
-    TLSDataParams_pt pTlsData;
+    char                port_str[6];
+    const char         *alter = host;
+    TLSDataParams_pt    pTlsData;
 
-    pTlsData = HAL_Malloc(sizeof(TLSDataParams_t));
+    pTlsData = g_ssl_hooks.malloc(sizeof(TLSDataParams_t));
     if (NULL == pTlsData) {
         return (uintptr_t)NULL;
     }
@@ -557,10 +588,19 @@ uintptr_t HAL_SSL_Establish(const char *host,
 
     sprintf(port_str, "%u", port);
 
-    if (0 != _TLSConnectNetwork(pTlsData, host, port_str, ca_crt, ca_crt_len, NULL, 0, NULL, 0, NULL, 0)) {
+#if defined(ON_PRE)
+    if (!strcmp(GUIDER_ONLINE_HOSTNAME, host)) {
+        hal_err("ALTERING '%s' to '%s' since ON_PRE defined!", host, GUIDER_PRE_ADDRESS);
+        alter = GUIDER_PRE_ADDRESS;
+    }
+#endif
+
+    mbedtls_platform_set_calloc_free(_SSLCalloc_wrapper, _SSLFree_wrapper);
+
+    if (0 != _TLSConnectNetwork(pTlsData, alter, port_str, ca_crt, ca_crt_len, NULL, 0, NULL, 0, NULL, 0)) {
         _network_ssl_disconnect(pTlsData);
-        HAL_Free((void *)pTlsData);
-        return (uintptr_t)NULL; 
+        g_ssl_hooks.free((void *)pTlsData);
+        return (uintptr_t)NULL;
     }
 
     return (uintptr_t)pTlsData;

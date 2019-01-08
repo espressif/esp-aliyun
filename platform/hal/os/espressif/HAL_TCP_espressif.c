@@ -1,38 +1,38 @@
 /*
- * Copyright (c) 2014-2016 Alibaba Group. All rights reserved.
- * License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
+
+
+
+
+
+#include <stdio.h>
 #include <string.h>
-#include <netdb.h>
+#include <errno.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
 
 #include "iot_import.h"
+#include "iotx_hal_internal.h"
 
-#define PLATFORM_ESPSOCK_LOG(format, ...) \
-    do { \
-        HAL_Printf("ESP32SOCK %u %s() | "format"\n", __LINE__, __FUNCTION__, ##__VA_ARGS__);\
-        fflush(stdout);\
-    } while(0)
-
-static uint64_t _esp_get_time_ms(void)
+static uint64_t _linux_get_time_ms(void)
 {
-    return HAL_UptimeMs();
+    struct timeval tv = { 0 };
+    uint64_t time_ms;
+
+    gettimeofday(&tv, NULL);
+
+    time_ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+    return time_ms;
 }
 
-static uint64_t _esp_time_left(uint64_t t_end, uint64_t t_now)
+static uint64_t _linux_time_left(uint64_t t_end, uint64_t t_now)
 {
     uint64_t t_left;
 
@@ -53,10 +53,10 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     int fd = 0;
     int rc = 0;
     char service[6];
-    int sockopt = 1;
+
     memset(&hints, 0, sizeof(hints));
 
-    PLATFORM_ESPSOCK_LOG("establish tcp connection with server(host=%s port=%u)", host, port);
+    hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
 
     hints.ai_family = AF_INET; /* only IPv4 */
     hints.ai_socktype = SOCK_STREAM;
@@ -64,26 +64,23 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     sprintf(service, "%u", port);
 
     if ((rc = getaddrinfo(host, service, &hints, &addrInfoList)) != 0) {
-        perror("getaddrinfo error");
+        hal_err("getaddrinfo error");
         return 0;
     }
 
     for (cur = addrInfoList; cur != NULL; cur = cur->ai_next) {
         if (cur->ai_family != AF_INET) {
-            perror("socket type error");
+            hal_err("socket type error");
             rc = 0;
             continue;
         }
 
         fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
         if (fd < 0) {
-            perror("create socket error");
+            hal_err("create socket error");
             rc = 0;
             continue;
         }
-
-        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,&sockopt, sizeof(sockopt));
-        setsockopt(fd, SOL_SOCKET, SO_REUSEPORT,&sockopt, sizeof(sockopt));
 
         if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
             rc = fd;
@@ -91,19 +88,20 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
         }
 
         close(fd);
-        perror("connect error");
+        hal_err("connect error");
         rc = 0;
     }
 
     if (0 == rc) {
-        PLATFORM_ESPSOCK_LOG("fail to establish tcp");
+        hal_err("fail to establish tcp");
     } else {
-        PLATFORM_ESPSOCK_LOG("success to establish tcp, fd=%d", rc);
+        hal_info("success to establish tcp, fd=%d", rc);
     }
     freeaddrinfo(addrInfoList);
 
     return (uintptr_t)rc;
 }
+
 
 int HAL_TCP_Destroy(uintptr_t fd)
 {
@@ -112,18 +110,19 @@ int HAL_TCP_Destroy(uintptr_t fd)
     /* Shutdown both send and receive operations. */
     rc = shutdown((int) fd, 2);
     if (0 != rc) {
-        perror("shutdown error");
+        hal_err("shutdown error");
         return -1;
     }
 
     rc = close((int) fd);
     if (0 != rc) {
-        perror("closesocket error");
+        hal_err("closesocket error");
         return -1;
     }
 
     return 0;
 }
+
 
 int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms)
 {
@@ -132,12 +131,12 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
     uint64_t t_end, t_left;
     fd_set sets;
 
-    t_end = _esp_get_time_ms() + timeout_ms;
+    t_end = _linux_get_time_ms() + timeout_ms;
     len_sent = 0;
     ret = 1; /* send one time if timeout_ms is value 0 */
 
     do {
-        t_left = _esp_time_left(t_end, _esp_get_time_ms());
+        t_left = _linux_time_left(t_end, _linux_get_time_ms());
 
         if (0 != t_left) {
             struct timeval timeout;
@@ -151,21 +150,21 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
             ret = select(fd + 1, NULL, &sets, NULL, &timeout);
             if (ret > 0) {
                 if (0 == FD_ISSET(fd, &sets)) {
-                    PLATFORM_ESPSOCK_LOG("Should NOT arrive");
+                    hal_err("Should NOT arrive");
                     /* If timeout in next loop, it will not sent any data */
                     ret = 0;
                     continue;
                 }
             } else if (0 == ret) {
-                PLATFORM_ESPSOCK_LOG("select-write timeout %d", (int)fd);
+                hal_err("select-write timeout %d", (int)fd);
                 break;
             } else {
                 if (EINTR == errno) {
-                    PLATFORM_ESPSOCK_LOG("EINTR be caught");
+                    hal_err("EINTR be caught");
                     continue;
                 }
 
-                perror("select-write fail");
+                hal_err("select-write fail");
                 break;
             }
         }
@@ -175,21 +174,22 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
             if (ret > 0) {
                 len_sent += ret;
             } else if (0 == ret) {
-                PLATFORM_ESPSOCK_LOG("No data be sent");
+                hal_err("No data be sent");
             } else {
                 if (EINTR == errno) {
-                    PLATFORM_ESPSOCK_LOG("EINTR be caught");
+                    hal_err("EINTR be caught");
                     continue;
                 }
 
-                perror("send fail");
+                hal_err("send fail");
                 break;
             }
         }
-    } while ((len_sent < len) && (_esp_time_left(t_end, _esp_get_time_ms()) > 0));
+    } while ((len_sent < len) && (_linux_time_left(t_end, _linux_get_time_ms()) > 0));
 
     return len_sent;
 }
+
 
 int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
 {
@@ -199,12 +199,12 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
     fd_set sets;
     struct timeval timeout;
 
-    t_end = _esp_get_time_ms() + timeout_ms;
+    t_end = _linux_get_time_ms() + timeout_ms;
     len_recv = 0;
     err_code = 0;
 
     do {
-        t_left = _esp_time_left(t_end, _esp_get_time_ms());
+        t_left = _linux_time_left(t_end, _linux_get_time_ms());
         if (0 == t_left) {
             break;
         }
@@ -220,22 +220,22 @@ int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms)
             if (ret > 0) {
                 len_recv += ret;
             } else if (0 == ret) {
-                perror("connection is closed");
+                hal_err("connection is closed");
                 err_code = -1;
                 break;
             } else {
                 if (EINTR == errno) {
-                    PLATFORM_ESPSOCK_LOG("EINTR be caught");
+                    hal_err("EINTR be caught");
                     continue;
                 }
-                perror("recv fail");
+                hal_err("recv fail");
                 err_code = -2;
                 break;
             }
         } else if (0 == ret) {
             break;
         } else {
-            perror("select-recv fail");
+            hal_err("select-recv fail");
             err_code = -2;
             break;
         }
