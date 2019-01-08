@@ -1,0 +1,3 @@
+[submodule "iotkit-embedded"]
+	path = iotkit-embedded
+	url = https://github.com/aliyun/iotkit-embedded.git
