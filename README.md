@@ -30,8 +30,8 @@ ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware
 连接 PC 和 ESP 设备，用来烧写/下载程序，查看 log 等。
 
 # <span id = "aliyunprepare">三：阿里云平台准备</span>
-根据[阿里官方文档](https://github.com/aliyun/iotkit-embedded?spm=5176.doc42648.2.4.e9Zu05)，在阿里云平台创建产品，创建设备，同时自动产生 `product key`, `device name`, `device secret`。  
-`product key`, `device name`, `device secret` 将在 6.1.2 节用到。
+根据[阿里官方文档](https://github.com/aliyun/iotkit-embedded?spm=5176.doc42648.2.4.e9Zu05)，在阿里云平台创建产品，创建设备，同时自动产生 `product key`, `product secert`, `device name`, `device secret`。  
+`product key`, `product secert`, `device name`, `device secret` 将在 6.1.2 节用到。
 
 # <span id = "compileprepare">四：环境搭建</span>
 **如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)文档等。**  
@@ -57,7 +57,9 @@ $ ./components/esptool_py/esptool/esptool.py --help
   - ESP32 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
   - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
 
-> Espressif SDK 下载好后，请执行 `git checkout release/v3.0`
+> Espressif SDK 下载好后:
+> ESP-IDF: 请切换到 v3.3: `git checkout release/v3.3`
+> ESP8266_RTOS_SDK: 请切换到 v3.1-rc: `git checkout 5df0b1d71`
 
 # <span id = "makeflash">六：编译 & 烧写 & 运行</span>
 ## 6.1 编译
@@ -66,21 +68,39 @@ $ ./components/esptool_py/esptool/esptool.py --help
 参考 [工具链的设置](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/linux-setup.html)
 
 ### 6.1.2 SDK 配置
+- 进入需要编译的 example, 配置三元组信息等
+
 ```
 cd esp-aliyun/examples/mqtt
+make defconfig
 make menuconfig
 ```
 
 ![p1](docs/_static/p1.png)
 
 - 配置烧写串口
-- 配置 `PRODUCT_KEY`, `DEVICE_NAME`, `DEVICE_SECRET`  
 - 配置 `WIFI_SSID`, `WIFI_PASSWORD`
 
 ### 6.1.3 编译 SDK
+1.生成 `libiot_sdk.a`
 
 ```
-$ make aliyun && make
+cd iotkit-embedded
+make reconfig
+# 选择 esp8266 或 esp32 平台
+make
+```
+> 注: `iotkit-embedded` 当前暂未集成 ESP32 平台, 我们可以将 `config.esp8266.aos`, 复制一份保存为 `config.esp32.aos`.  
+>   编译器 `CROSS_PREFIX` 改为 `:= xtensa-esp32-elf-`  
+>   `BOARD_ESP8266` 改为 `BOARD_ESP32`  
+>   `ESPOS_FOR_ESP8266` 改为 `ESPOS_FOR_ESP32`  
+> 待阿里合入 [PR](https://github.com/aliyun/iotkit-embedded/pull/119) 后, 即忽略此处  
+
+2.生成最终 bin
+
+```
+cd examples/mqtt_example
+make
 ```
 
 ## 6.2 擦除 & 编译烧写 & 下载固件 & 查看 log
@@ -88,18 +108,18 @@ $ make aliyun && make
 
 ### 6.2.1[可选] 擦除 flash
 ```
-$ make erase_flash
+make erase_flash
 ```
 
 ### 6.2.2 烧录程序
 ```
-$ make flash
+make flash
 ```
 
 ## 6.2.3 运行
 
 ```
-$ make monitor
+make monitor
 ```
 
 如将 ESP8266 拨至运行状态，即可看到如下 log：  
