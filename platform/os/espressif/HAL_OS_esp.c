@@ -144,14 +144,14 @@ int HAL_GetPartnerID(char* pid_str)
 int HAL_GetModuleID(char* mid_str)
 {
     memset(mid_str, 0x0, MID_STRLEN_MAX);
-    strcpy(mid_str, "wroom-32");
+    strcpy(mid_str, "wroom");
     return strlen(mid_str);
 }
 
 char *HAL_GetChipID(_OU_ char* cid_str)
 {
     memset(cid_str, 0x0, HAL_CID_LEN);
-    strncpy(cid_str, "esp32", HAL_CID_LEN);
+    strncpy(cid_str, "esp", HAL_CID_LEN);
     cid_str[HAL_CID_LEN - 1] = '\0';
     return cid_str;
 }
