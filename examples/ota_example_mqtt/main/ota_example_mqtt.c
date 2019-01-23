@@ -124,14 +124,7 @@ static int _ota_mqtt_client(void)
     iotx_conn_info_pt pconn_info;
     iotx_mqtt_param_t mqtt_params;
     char *msg_buf = NULL, *msg_readbuf = NULL;
-    FILE *fp;
     char buf_ota[OTA_BUF_LEN];
-
-    if (NULL == (fp = fopen("ota.bin", "wb+"))) {
-        EXAMPLE_TRACE("open file failed");
-        goto do_exit;
-    }
-
 
     if (NULL == (msg_buf = (char *)HAL_Malloc(OTA_MQTT_MSGLEN))) {
         EXAMPLE_TRACE("not enough memory");
@@ -192,11 +185,13 @@ static int _ota_mqtt_client(void)
         goto do_exit;
     }
 
-    // if (0 != IOT_OTA_ReportVersion(h_ota, "iotx_ver_1.1.0")) {
-    //     rc = -1;
-    //     EXAMPLE_TRACE("report OTA version failed");
-    //     goto do_exit;
-    // }
+    if (0 != IOT_OTA_ReportVersion(h_ota, "iotx_ver_1.0.0")) {
+        rc = -1;
+        EXAMPLE_TRACE("report OTA version failed");
+        goto do_exit;
+    }
+
+    HAL_Firmware_Persistence_Start();
 
     HAL_SleepMs(1000);
 
@@ -217,7 +212,7 @@ static int _ota_mqtt_client(void)
 
                 len = IOT_OTA_FetchYield(h_ota, buf_ota, OTA_BUF_LEN, 1);
                 if (len > 0) {
-                    if (1 != fwrite(buf_ota, len, 1, fp)) {
+                    if (HAL_Firmware_Persistence_Write(buf_ota, len) <= 0) {
                         EXAMPLE_TRACE("write data to file failed");
                         rc = -1;
                         break;
@@ -254,6 +249,7 @@ static int _ota_mqtt_client(void)
         HAL_SleepMs(2000);
     } while (!ota_over);
 
+    HAL_Firmware_Persistence_Stop();
     HAL_SleepMs(200);
 
 
@@ -276,14 +272,10 @@ do_exit:
         HAL_Free(msg_readbuf);
     }
 
-    if (NULL != fp) {
-        fclose(fp);
-    }
-
     return rc;
 }
 
-int main(int argc, char **argv)
+int linkkit_main(int argc, char **argv)
 {
     IOT_SetLogLevel(IOT_LOG_DEBUG);
 

@@ -100,7 +100,7 @@ static void initialise_wifi(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-void mqtt_example(void* parameter)
+void ota_example_mqtt(void* parameter)
 {
     while(1) {
         ESP_LOGI(TAG, "wait wifi connect...");
@@ -111,7 +111,7 @@ void mqtt_example(void* parameter)
         paras.argc = 2;
         paras.argv = argv; 
     
-        linkkit_main((void *)&paras);
+        linkkit_main(paras.argc, paras.argv);
     }
 }
 
@@ -130,6 +130,6 @@ void app_main()
     initialise_wifi();
 
     // SNTP service uses LwIP, please allocate large stack space.
-    xTaskCreate(mqtt_example, "mqtt_example", 10240, NULL, 5, NULL);
+    xTaskCreate(ota_example_mqtt, "ota_example_mqtt", 20480, NULL, 5, NULL);
 }
 

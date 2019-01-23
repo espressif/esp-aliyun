@@ -14,5 +14,5 @@ typedef struct {
     char **argv;
 }app_main_paras_t;
 
-int linkkit_main(void *paras);
+int linkkit_main(int argc, char **argv);
 #endif
