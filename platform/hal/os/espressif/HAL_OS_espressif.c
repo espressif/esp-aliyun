@@ -36,6 +36,10 @@
 
 #include "esp_wifi.h"
 #include "nvs.h"
+#include "esp_log.h"
+#include "esp_ota_ops.h"
+
+static const char* LOG_TAG = "HAL-OS";
 
 #define __DEMO__
 
@@ -461,42 +465,81 @@ void HAL_ThreadDelete(_IN_ void *thread_handle)
     }
 }
 
-static FILE *fp;
-
-#define otafilename "/tmp/alinkota.bin"
+esp_ota_handle_t update_handle = 0 ;
+esp_partition_t *update_partition = NULL;
+uint32_t sum_download_bytes = 0;
 
 void HAL_Firmware_Persistence_Start(void)
 {
-#ifdef __DEMO__
-    fp = fopen(otafilename, "w");
-    //    assert(fp);
-#endif
+    esp_err_t err = ESP_OK;
+    ESP_LOGI(LOG_TAG, "Starting ESP-OTA...");
+    update_handle = 0 ;
+    update_partition = NULL;
+    sum_download_bytes = 0;
+    
+    const esp_partition_t *configured = esp_ota_get_boot_partition();
+    const esp_partition_t *running = esp_ota_get_running_partition();
+
+    if (configured != running) {
+        ESP_LOGW(LOG_TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
+                 configured->address, running->address);
+        ESP_LOGW(LOG_TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
+    }
+    ESP_LOGI(LOG_TAG, "Running partition type %d subtype %d (offset 0x%08x)",
+             running->type, running->subtype, running->address);
+
+    update_partition = esp_ota_get_next_update_partition(NULL);
+    ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%x",
+             update_partition->subtype, update_partition->address);
+    assert(update_partition != NULL);
+
+    err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "esp_ota_begin failed, error=%d", err);
+        return;
+    }
+
+    ESP_LOGI(LOG_TAG, "esp_ota_begin succeeded");
     return;
 }
 
 int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
 {
-#ifdef __DEMO__
-    unsigned int written_len = 0;
-    written_len = fwrite(buffer, 1, length, fp);
-
-    if (written_len != length) {
+    esp_err_t err = ESP_OK;
+    err = esp_ota_write( update_handle, (const void *)buffer, length);
+    if (err != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "Error: esp_ota_write failed! err=0x%x", err);
         return -1;
     }
-#endif
-    return 0;
+
+    sum_download_bytes += length;
+    ESP_LOGI(LOG_TAG, "%d w ok", sum_download_bytes);
+    return length;
 }
 
 int HAL_Firmware_Persistence_Stop(void)
 {
-#ifdef __DEMO__
-    if (fp != NULL) {
-        fclose(fp);
-    }
-#endif
-
     /* check file md5, and burning it to flash ... finally reboot system */
+    ESP_LOGI(LOG_TAG, "Stop ESP-OTA...");
+    esp_err_t err = ESP_OK;
+    if(update_handle != 0) {
+        if (esp_ota_end(update_handle) != ESP_OK) {
+            ESP_LOGE(LOG_TAG, "esp_ota_end failed!");
+            return -1;
+        }
+    }
 
+    if(update_partition != NULL) {
+        err = esp_ota_set_boot_partition(update_partition);
+        if (err != ESP_OK) {
+            ESP_LOGE(LOG_TAG, "esp_ota_set_boot_partition failed! err=0x%x", err);
+            return -1;
+        }
+    }
+
+    ESP_LOGI(LOG_TAG, "Prepare to restart system!");
+
+    esp_restart();
     return 0;
 }
 
