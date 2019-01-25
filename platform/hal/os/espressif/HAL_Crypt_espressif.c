@@ -1,7 +1,8 @@
 /*
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
-
+#include "sdkconfig.h"
+#ifdef CONFIG_IDF_TARGET_ESP32
 #include <string.h>
 #include "iot_import.h"
 #include "mbedtls/aes.h"
@@ -136,4 +137,6 @@ int HAL_Aes128_Cfb_Decrypt(
                                    &offset, p_aes128->iv, src, dst);
     return ret;
 }
+#endif
+
 #endif

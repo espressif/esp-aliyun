@@ -38,8 +38,9 @@
 #include "nvs.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
+#include "sdkconfig.h"
 
-static const char* LOG_TAG = "HAL-OS";
+static const char* OS_TAG = "HAL-OS";
 
 #define __DEMO__
 
@@ -472,34 +473,33 @@ uint32_t sum_download_bytes = 0;
 void HAL_Firmware_Persistence_Start(void)
 {
     esp_err_t err = ESP_OK;
-    ESP_LOGI(LOG_TAG, "Starting ESP-OTA...");
+    ESP_LOGI(OS_TAG, "Starting ESP-OTA...");
     update_handle = 0 ;
     update_partition = NULL;
     sum_download_bytes = 0;
-    
     const esp_partition_t *configured = esp_ota_get_boot_partition();
     const esp_partition_t *running = esp_ota_get_running_partition();
 
     if (configured != running) {
-        ESP_LOGW(LOG_TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
+        ESP_LOGW(OS_TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
                  configured->address, running->address);
-        ESP_LOGW(LOG_TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
+        ESP_LOGW(OS_TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
     }
-    ESP_LOGI(LOG_TAG, "Running partition type %d subtype %d (offset 0x%08x)",
+    ESP_LOGI(OS_TAG, "Running partition type %d subtype %d (offset 0x%08x)",
              running->type, running->subtype, running->address);
 
     update_partition = esp_ota_get_next_update_partition(NULL);
-    ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%x",
+    ESP_LOGI(OS_TAG, "Writing to partition subtype %d at offset 0x%x",
              update_partition->subtype, update_partition->address);
     assert(update_partition != NULL);
-
+    //    assert(fp);
     err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(LOG_TAG, "esp_ota_begin failed, error=%d", err);
+        ESP_LOGE(OS_TAG, "esp_ota_begin failed, error=%d", err);
         return;
     }
 
-    ESP_LOGI(LOG_TAG, "esp_ota_begin succeeded");
+    ESP_LOGI(OS_TAG, "esp_ota_begin succeeded");
     return;
 }
 
@@ -508,23 +508,22 @@ int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
     esp_err_t err = ESP_OK;
     err = esp_ota_write( update_handle, (const void *)buffer, length);
     if (err != ESP_OK) {
-        ESP_LOGE(LOG_TAG, "Error: esp_ota_write failed! err=0x%x", err);
+        ESP_LOGE(OS_TAG, "Error: esp_ota_write failed! err=0x%x", err);
         return -1;
     }
 
     sum_download_bytes += length;
-    ESP_LOGI(LOG_TAG, "%d w ok", sum_download_bytes);
+    ESP_LOGI(OS_TAG, "%d w ok", sum_download_bytes);
     return length;
 }
 
 int HAL_Firmware_Persistence_Stop(void)
 {
-    /* check file md5, and burning it to flash ... finally reboot system */
-    ESP_LOGI(LOG_TAG, "Stop ESP-OTA...");
+    ESP_LOGI(OS_TAG, "Stop ESP-OTA...");
     esp_err_t err = ESP_OK;
     if(update_handle != 0) {
         if (esp_ota_end(update_handle) != ESP_OK) {
-            ESP_LOGE(LOG_TAG, "esp_ota_end failed!");
+            ESP_LOGE(OS_TAG, "esp_ota_end failed!");
             return -1;
         }
     }
@@ -532,13 +531,13 @@ int HAL_Firmware_Persistence_Stop(void)
     if(update_partition != NULL) {
         err = esp_ota_set_boot_partition(update_partition);
         if (err != ESP_OK) {
-            ESP_LOGE(LOG_TAG, "esp_ota_set_boot_partition failed! err=0x%x", err);
+            ESP_LOGE(OS_TAG, "esp_ota_set_boot_partition failed! err=0x%x", err);
             return -1;
         }
     }
 
-    ESP_LOGI(LOG_TAG, "Prepare to restart system!");
-
+    ESP_LOGI(OS_TAG, "Prepare to restart system!");
+    /* check file md5, and burning it to flash ... finally reboot system */
     esp_restart();
     return 0;
 }
@@ -588,12 +587,9 @@ int HAL_Config_Read(char *buffer, int length)
     return ((read_len != length) ? -1 : 0);
 }
 
-#define REBOOT_CMD "reboot"
 void HAL_Reboot(void)
 {
-    if (system(REBOOT_CMD)) {
-        perror("HAL_Reboot failed");
-    }
+    esp_restart();
 }
 
 #define ROUTER_INFO_PATH        "/proc/net/route"
@@ -652,40 +648,14 @@ out:
 
 uint32_t HAL_Wifi_Get_IP(char ip_str[NETWORK_ADDR_LEN], const char *ifname)
 {
-    return 0;
-#if 0
-    struct ifreq ifreq;
-    int sock = -1;
-    char ifname_buff[IFNAMSIZ] = {0};
-
-    if ((NULL == ifname || strlen(ifname) == 0) &&
-        NULL == (ifname = _get_default_routing_ifname(ifname_buff, sizeof(ifname_buff)))) {
-        perror("get default routeing ifname");
-        return -1;
+    if (ip_str == NULL) {
+        return 0;
     }
+    tcpip_adapter_ip_info_t info;
+    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &info);
+    memcpy(ip_str, inet_ntoa(info.ip.addr), NETWORK_ADDR_LEN);
 
-    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket");
-        return -1;
-    }
-
-    ifreq.ifr_addr.sa_family = AF_INET; //ipv4 address
-    strncpy(ifreq.ifr_name, ifname, IFNAMSIZ - 1);
-
-    if (ioctl(sock, SIOCGIFADDR, &ifreq) < 0) {
-        close(sock);
-        perror("ioctl");
-        return -1;
-    }
-
-    close(sock);
-
-    strncpy(ip_str,
-            inet_ntoa(((struct sockaddr_in *)&ifreq.ifr_addr)->sin_addr),
-            NETWORK_ADDR_LEN);
-
-    return ((struct sockaddr_in *)&ifreq.ifr_addr)->sin_addr.s_addr;
-#endif
+    return info.ip.addr;
 }
 
 static const char *NVS_KV = "kv data";
@@ -738,104 +708,112 @@ long long HAL_UTC_Get(void)
     return delta_time + os_time_get();
 }
 
+
+#ifdef CONFIG_IDF_TARGET_ESP32
+typedef enum {
+    TIMER_NOT_INIT = 0,
+    TIMER_CREATED,
+    TIMER_STARTED,
+    TIMER_STOPPED,
+    TIMER_DELETED
+} timer_state_t;
+
+typedef struct {
+    timer_state_t       current_state;
+    esp_timer_handle_t  timer;
+} timer_handler;
+
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
 {
-    return NULL;
-#if 0
-    timer_t *timer = NULL;
-
-    struct sigevent ent;
-
     /* check parameter */
     if (func == NULL) {
         return NULL;
     }
 
-    timer = (timer_t *)malloc(sizeof(time_t));
-
-    /* Init */
-    memset(&ent, 0x00, sizeof(struct sigevent));
-
-    /* create a timer */
-    ent.sigev_notify = SIGEV_THREAD;
-    ent.sigev_notify_function = (void (*)(union sigval))func;
-    ent.sigev_value.sival_ptr = user_data;
-
-    printf("HAL_Timer_Create\n");
-
-    if (timer_create(CLOCK_MONOTONIC, &ent, timer) != 0) {
-        free(timer);
+    timer_handler *timer = (timer_handler *)malloc(sizeof(timer_handler));
+    if(!timer) {
         return NULL;
+    } else {
+        memset(timer, 0x0, sizeof(timer_handler));
+    }
+
+    esp_timer_create_args_t timer_args = {
+            .callback = func,
+            .arg = user_data,
+            .name = name
+    };
+
+    esp_err_t ret = esp_timer_create(&timer_args, &(timer->timer));
+    if(ret != ESP_OK) {
+        timer->current_state = TIMER_NOT_INIT;
+    } else {
+        timer->current_state = TIMER_CREATED;
     }
 
     return (void *)timer;
-#endif
 }
 
-int HAL_Timer_Start(void *timer, int ms)
+int HAL_Timer_Start(void *input_timer, int ms)
 {
-    return 0;
-#if 0
-    struct itimerspec ts;
-
     /* check parameter */
-    if (timer == NULL) {
+    if (input_timer == NULL) {
+        return -1;
+    }
+    timer_handler *timer = (timer_handler *)input_timer;
+
+    if( (timer->current_state == TIMER_NOT_INIT) 
+        || (timer->current_state == TIMER_STARTED) 
+        || (timer->current_state == TIMER_DELETED) ) {
         return -1;
     }
 
-    /* it_interval=0: timer run only once */
-    ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 0;
+    esp_err_t ret = esp_timer_start_once(timer->timer, ms);
+    if(ret == ESP_OK) {
+        timer->current_state = TIMER_STARTED;
+    }
 
-    /* it_value=0: stop timer */
-    ts.it_value.tv_sec = ms / 1000;
-    ts.it_value.tv_nsec = (ms % 1000) * 1000;
-
-    return timer_settime(*(timer_t *)timer, 0, &ts, NULL);
-#endif
+    return 0;
 }
 
-int HAL_Timer_Stop(void *timer)
+int HAL_Timer_Stop(void *input_timer)
 {
-    return 0;
-#if 0
-    struct itimerspec ts;
-
     /* check parameter */
-    if (timer == NULL) {
+    if (input_timer == NULL) {
         return -1;
     }
 
-    /* it_interval=0: timer run only once */
-    ts.it_interval.tv_sec = 0;
-    ts.it_interval.tv_nsec = 0;
+    timer_handler *timer = (timer_handler *)input_timer;
 
-    /* it_value=0: stop timer */
-    ts.it_value.tv_sec = 0;
-    ts.it_value.tv_nsec = 0;
-
-    return timer_settime(*(timer_t *)timer, 0, &ts, NULL);
-#endif
-}
-
-int HAL_Timer_Delete(void *timer)
-{
-    return 0;
-#if 0
-    int ret = 0;
-
-    /* check parameter */
-    if (timer == NULL) {
+    if(timer->current_state != TIMER_STARTED) {
         return -1;
     }
 
-    ret = timer_delete(*(timer_t *)timer);
+    esp_err_t ret = esp_timer_stop(timer->timer);
+    if(ret == ESP_OK) {
+        timer->current_state = TIMER_STOPPED;
+    }
 
-    free(timer);
-
-    return ret;
-#endif
+    return 0;
 }
+
+int HAL_Timer_Delete(void *input_timer)
+{
+    /* check parameter */
+    if (input_timer == NULL) {
+        return -1;
+    }
+
+    timer_handler *timer = (timer_handler *)input_timer;
+
+    if(timer->current_state == TIMER_DELETED || timer->current_state == TIMER_NOT_INIT) {
+        return -1;
+    }
+
+    esp_timer_delete(timer->timer);
+
+    return 0;
+}
+#endif
 
 int HAL_GetNetifInfo(char *nif_str)
 {
@@ -846,6 +824,7 @@ int HAL_GetNetifInfo(char *nif_str)
     if(mac == NULL) {
         mac = (char*)malloc(MAC_ADDR_LEN);
     }
+
     if(mac == NULL) {
         hal_err("malloc failed");
         return NULL;
@@ -858,17 +837,4 @@ int HAL_GetNetifInfo(char *nif_str)
     }
 
     return snprintf(nif_str, NIF_STRLEN_MAX, "WiFi|%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-#if 0
-    memset(nif_str, 0x0, NIF_STRLEN_MAX);
-#ifdef __DEMO__
-    /* if the device have only WIFI, then list as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
-    const char *net_info = "WiFi|03ACDEFF0032";
-    strncpy(nif_str, net_info, strlen(net_info));
-    /* if the device have ETH, WIFI, GSM connections, then list all of them as follow, note that the len MUST NOT exceed NIF_STRLEN_MAX */
-    // const char *multi_net_info = "ETH|0123456789abcde|WiFi|03ACDEFF0032|Cellular|imei_0123456789abcde|iccid_0123456789abcdef01234|imsi_0123456789abcde|msisdn_86123456789ab");
-    // strncpy(nif_str, multi_net_info, strlen(multi_net_info));
-#endif
-    return strlen(nif_str);
-#endif
 }

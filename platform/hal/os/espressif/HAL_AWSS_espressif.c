@@ -1,9 +1,131 @@
 /*
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
-
+#include "sdkconfig.h"
+#ifdef CONFIG_IDF_TARGET_ESP32
 #include <string.h>
 #include "iot_import.h"
+
+
+#include "nvs.h"
+#include "nvs_flash.h"
+
+#include "lwip/sockets.h"
+#include "freertos/timers.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event_loop.h"
+#include "esp_log.h"
+#include "errno.h"
+#include "esp_err.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_event_loop.h"
+
+#define NVS_KEY_WIFI_CONFIG "wifi_config"
+#define AWSS_SPACE_NAME     "AWSS_APP"
+
+extern EventGroupHandle_t wifi_event_group;
+extern const int CONNECTED_BIT;
+
+static const char *TAG = "awss_config";
+static awss_recv_80211_frame_cb_t g_sniffer_cb = NULL;
+static bool sys_net_is_ready = false;
+static TimerHandle_t g_timer = NULL;
+static SemaphoreHandle_t xSemConnet = NULL;
+
+typedef void (*wifi_sta_rx_probe_req_t)(const uint8_t *frame, int len, int rssi);
+extern esp_err_t esp_wifi_set_sta_rx_probe_req(wifi_sta_rx_probe_req_t cb);
+static awss_wifi_mgmt_frame_cb_t g_callback = NULL;
+static uint8_t g_vendor_oui[3] = { 0 };
+
+#define HAL_LOGE( format, ... ) ESP_LOGE(TAG, "[%s, %d]:" format, __func__, __LINE__, ##__VA_ARGS__)
+
+/**
+ * @brief Check the return value
+ */
+#define AWSS_ERROR_CHECK(con, err, format, ...) do { \
+    if (con) { \
+        HAL_LOGE(format , ##__VA_ARGS__); \
+        if(errno) HAL_LOGE("errno: %d, errno_str: %s\n", errno, strerror(errno)); \
+        return err; \
+    } \
+}while (0)
+
+int esp_info_erase(const char *key)
+{
+    int ret   = ESP_OK;
+    nvs_handle handle = 0;
+
+    if (key) {
+        return -1;
+    }
+
+    ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
+
+    ret = nvs_erase_key(handle, key);
+    nvs_commit(handle);
+    nvs_close(handle);
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_erase_key ret:%x", ret);
+    return 0;
+}
+
+ssize_t esp_info_save(const char *key, const void *value, size_t length)
+{
+    int ret = ESP_OK;
+    nvs_handle handle = 0;
+
+    if (key == NULL || value == NULL || length < 0) {
+        return -1;
+    }
+    
+    ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
+
+    /**
+     * Reduce the number of flash writes
+     */
+    char *tmp = (char *)malloc(length);
+    ret = nvs_get_blob(handle, key, tmp, &length);
+    if ((ret == ESP_OK) && !memcmp(tmp, value, length)) {
+        free(tmp);
+        nvs_close(handle);
+        return length;
+    }
+    free(tmp);
+
+    ret = nvs_set_blob(handle, key, value, length);
+    nvs_commit(handle);
+    nvs_close(handle);
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_set_blob ret:%x", ret);
+    return length;
+}
+
+ssize_t esp_info_load(const char *key, void *value, size_t length)
+{
+    int ret = ESP_OK;
+    nvs_handle handle = 0;
+
+    if (key == NULL || value == NULL || length < 0) {
+        return -1;
+    }
+
+    ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
+
+    ret = nvs_get_blob(handle, key, value, &length);
+    nvs_close(handle);
+
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        printf("No data storage,the load data is empty");
+        return -1;
+    }
+    AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_get_blob ret:%x", ret);
+    return length;
+}
+
 
 /**
  * @brief   获取`smartconfig`服务的安全等级
@@ -53,7 +175,14 @@ int HAL_Awss_Get_Conn_Encrypt_Type()
  */
 char *HAL_Wifi_Get_Mac(_OU_ char mac_str[HAL_MAC_LEN])
 {
-    strcpy(mac_str, "18:FE:34:12:33:44");
+    uint8_t mac[6] = {0};
+
+    if (mac_str == NULL) {
+        return NULL;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_get_mac(ESP_IF_WIFI_STA, mac));
+    snprintf(mac_str, HAL_MAC_LEN, MACSTR, MAC2STR(mac));
     return mac_str;
 }
 
@@ -79,6 +208,55 @@ int HAL_Awss_Get_Channelscan_Interval_Ms(void)
     return 250;
 }
 
+
+/**
+ * @brief   802.11帧的处理函数, 可以将802.11 Frame传递给这个函数
+ *
+ * @param[in] buf @n 80211 frame buffer, or pointer to struct ht40_ctrl
+ * @param[in] length @n 80211 frame buffer length
+ * @param[in] link_type @n AWSS_LINK_TYPE_NONE for most rtos HAL,
+ *              and for linux HAL, do the following step to check
+ *              which header type the driver supported.
+     @verbatim
+                a) iwconfig wlan0 mode monitor    #open monitor mode
+                b) iwconfig wlan0 channel 6    #switch channel 6
+                c) tcpdump -i wlan0 -s0 -w file.pacp    #capture 80211 frame
+    & save d) open file.pacp with wireshark or omnipeek check the link header
+    type and fcs included or not
+    @endverbatim
+    * @param[in] with_fcs @n 80211 frame buffer include fcs(4 byte) or not
+    * @param[in] rssi @n rssi of packet
+    */
+typedef int (*awss_recv_80211_frame_cb_t)(char *buf, int length,
+                                            enum AWSS_LINK_TYPE link_type,
+                                            int with_fcs, signed char rssi);
+
+typedef struct hal_wifi_link_info_s {
+    int8_t rssi; /* rssi value of received packet */
+} hal_wifi_link_info_t;
+
+typedef void (*awss_wifi_mgmt_frame_cb_t)(_IN_ uint8_t *   buffer,
+                                            _IN_ int         len,
+                                            _IN_ signed char rssi_dbm,
+                                            _IN_ int         buffer_type);
+
+static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
+{
+    int with_fcs  = 0;
+    int link_type = AWSS_LINK_TYPE_NONE;
+    wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)recv_buf;
+    hal_wifi_link_info_t info;
+
+    if (type != WIFI_PKT_DATA && type != WIFI_PKT_MGMT) {
+        return;
+    }
+
+    info.rssi = pkt->rx_ctrl.rssi;
+    if (g_sniffer_cb) {
+        g_sniffer_cb((char *)pkt->payload, pkt->rx_ctrl.sig_len - 4, link_type, with_fcs, info.rssi);
+    }
+}
+
 /**
  * @brief   设置Wi-Fi网卡工作在监听(Monitor)模式, 并在收到802.11帧的时候调用被传入的回调函数
  *
@@ -86,6 +264,18 @@ int HAL_Awss_Get_Channelscan_Interval_Ms(void)
  */
 void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
 {
+    if (cb == NULL) {
+        return;
+    }
+        
+    g_sniffer_cb = cb;
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_sniffer_cb));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(1));
+    ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    printf("wifi running at monitor mode\r\n");
 }
 
 /**
@@ -93,6 +283,10 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
  */
 void HAL_Awss_Close_Monitor(void)
 {
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(NULL));
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    printf("close wifi monitor mode, and set running at station mode\r\n");
 }
 
 /**
@@ -109,8 +303,69 @@ void HAL_Awss_Switch_Channel(
             _IN_OPT_ char secondary_channel,
             _IN_OPT_ uint8_t bssid[ETH_ALEN])
 {
+    esp_wifi_set_channel(primary_channel, secondary_channel);
 }
 
+/**
+ * @brief check system network is ready(get ip address) or not.
+ *
+ * @param None.
+ * @return 0, net is not ready; 1, net is ready.
+ * @see None.
+ * @note None.
+ */
+int HAL_Sys_Net_Is_Ready()
+{
+    return sys_net_is_ready;
+}
+
+static void wifi_connect_timer_cb(void *timer)
+{
+    if (!HAL_Sys_Net_Is_Ready()) {
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+    }
+
+    xTimerStop(g_timer, 0);
+    xTimerDelete(g_timer, 0);
+    g_timer = NULL;
+}
+
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    switch (event->event_id) {
+    case SYSTEM_EVENT_STA_CONNECTED:
+        printf("EVENT_STAMODE_CONNECTED");
+        /*!< compatible with xiaomi company's R1C router */
+        if (!g_timer) {
+            g_timer = xTimerCreate("Timer", 4000 / portTICK_RATE_MS, false, NULL, wifi_connect_timer_cb);
+            xTimerStart(g_timer, 0);
+        }
+        break;
+    case SYSTEM_EVENT_STA_START:
+        printf("SYSTEM_EVENT_STA_START");
+        sys_net_is_ready = false;
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+        sys_net_is_ready = true;
+        printf("SYSTEM_EVENT_STA_GOT_IP");
+        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        xSemaphoreGive(xSemConnet);
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        printf("SYSTEM_EVENT_STA_DISCONNECTED, free_heap: %d", esp_get_free_heap_size());
+        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        sys_net_is_ready = false;
+        int ret = esp_wifi_connect();
+        if (ret != ESP_OK) {
+            printf("esp_wifi_connect, ret: %d", ret);
+        }
+        break;
+    default:
+        break;
+    }
+    return 0;
+}
 /**
  * @brief   要求Wi-Fi网卡连接指定热点(Access Point)的函数
  *
@@ -140,19 +395,34 @@ int HAL_Awss_Connect_Ap(
             _IN_OPT_ uint8_t bssid[ETH_ALEN],
             _IN_OPT_ uint8_t channel)
 {
-    return 0;
-}
+    wifi_config_t wifi_config;
+    int ret = 0;
 
-/**
- * @brief check system network is ready(get ip address) or not.
- *
- * @param None.
- * @return 0, net is not ready; 1, net is ready.
- * @see None.
- * @note None.
- */
-int HAL_Sys_Net_Is_Ready()
-{
+    if (xSemConnet == NULL) {
+        xSemConnet = xSemaphoreCreateBinary();
+        esp_event_loop_set_cb(event_handler, NULL);
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    memcpy(wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    memcpy(wifi_config.sta.password, passwd, sizeof(wifi_config.sta.password));
+
+    printf("\r\n ap ssid: %s, password: %s", wifi_config.sta.ssid, wifi_config.sta.password);
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ret = xSemaphoreTake(xSemConnet, connection_timeout_ms / portTICK_RATE_MS);
+    if (ret == pdFALSE) {
+        return -1; 
+    }
+    if (!strcmp(ssid, "aha")) {
+        return 0;
+    }
+
+    ret = esp_info_save(NVS_KEY_WIFI_CONFIG, &wifi_config, sizeof(wifi_config_t));
+    AWSS_ERROR_CHECK(ret < 0, -1, "information save failed");
     return 0;
 }
 
@@ -175,9 +445,15 @@ int HAL_Sys_Net_Is_Ready()
 int HAL_Wifi_Send_80211_Raw_Frame(_IN_ enum HAL_Awss_Frame_Type type,
                                   _IN_ uint8_t *buffer, _IN_ int len)
 {
+    if (buffer) {
+        return -2;
+    }
+
+    extern esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
+    int ret = esp_wifi_80211_tx(ESP_IF_WIFI_STA, buffer, len, true);
+    AWSS_ERROR_CHECK(ret != 0, -1, "esp_wifi_80211_tx, ret: 0x%x", ret);
     return 0;
 }
-
 
 /**
  * @brief   在站点(Station)模式下使能或禁用对管理帧的过滤
@@ -197,11 +473,35 @@ int HAL_Wifi_Send_80211_Raw_Frame(_IN_ enum HAL_Awss_Frame_Type type,
  * @see None.
  * @note awss use this API to filter specific mgnt frame in wifi station mode
  */
+
+static void wifi_sta_rx_probe_req(const uint8_t *frame, int len, int rssi)
+{
+    vendor_ie_data_t *awss_ie_info = (vendor_ie_data_t *)(frame + 60);
+    if (awss_ie_info->element_id == WIFI_VENDOR_IE_ELEMENT_ID && awss_ie_info->length != 67 && !memcmp(awss_ie_info->vendor_oui, g_vendor_oui, 3)) {
+        if (awss_ie_info->vendor_oui_type == 171) {
+            printf("frame is no support, awss_ie_info->type: %d", awss_ie_info->vendor_oui_type);
+            return;
+        }
+        g_callback((uint8_t *)awss_ie_info, awss_ie_info->length + 2, rssi, 1);
+    }
+}
+
 int HAL_Wifi_Enable_Mgmt_Frame_Filter(
             _IN_ uint32_t filter_mask,
             _IN_OPT_ uint8_t vendor_oui[3],
             _IN_ awss_wifi_mgmt_frame_cb_t callback)
 {
+    int ret = ESP_OK;
+    if (callback == NULL){
+        return -2;
+    }
+
+    AWSS_ERROR_CHECK(filter_mask != (FRAME_PROBE_REQ_MASK | FRAME_BEACON_MASK), -2, "frame is no support, frame: 0x%x", filter_mask);
+    
+    g_callback = callback;
+    memcpy(g_vendor_oui, vendor_oui, sizeof(g_vendor_oui));
+    ret = esp_wifi_set_sta_rx_probe_req(wifi_sta_rx_probe_req);
+    AWSS_ERROR_CHECK(ret != 0, -1, "esp_wifi_set_sta_rx_probe_req, ret: %d", ret);
     return 0;
 }
 
@@ -224,6 +524,23 @@ int HAL_Wifi_Enable_Mgmt_Frame_Filter(
  */
 int HAL_Wifi_Scan(awss_wifi_scan_result_cb_t cb)
 {
+    uint16_t wifi_ap_num = 0;
+    wifi_ap_record_t *ap_info = NULL;
+    wifi_scan_config_t scan_config;
+
+    memset(&scan_config, 0, sizeof(scan_config));
+    ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&wifi_ap_num));
+
+    printf("ap number: %d", wifi_ap_num);
+    ap_info = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * wifi_ap_num);
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&wifi_ap_num, ap_info));
+    for (int i = 0; i < wifi_ap_num; ++i) {
+        cb((char *)ap_info[i].ssid, (uint8_t *)ap_info[i].bssid, ap_info[i].authmode, AWSS_ENC_TYPE_INVALID,
+           ap_info[i].primary, ap_info[i].rssi, 1);
+    }
+    ESP_ERROR_CHECK(esp_wifi_scan_stop());
+    free(ap_info);
     return 0;
 }
 
@@ -247,5 +564,31 @@ int HAL_Wifi_Get_Ap_Info(
             _OU_ char passwd[HAL_MAX_PASSWD_LEN],
             _OU_ uint8_t bssid[ETH_ALEN])
 {
+    int ret = 0;
+    wifi_ap_record_t ap_info;
+    wifi_config_t wifi_config;
+
+    memset(&ap_info, 0, sizeof(wifi_ap_record_t));
+    ESP_ERROR_CHECK(esp_wifi_sta_get_ap_info(&ap_info));
+    if (ssid) {
+        memcpy(ssid, ap_info.ssid, HAL_MAX_SSID_LEN);
+    }
+
+    if (bssid) {
+        memcpy(bssid, ap_info.bssid, ETH_ALEN);
+    }
+
+    if (!passwd) {
+        return 0;
+    }
+
+    ret = esp_info_load(NVS_KEY_WIFI_CONFIG, &wifi_config, sizeof(wifi_config_t));
+    if (ret > 0 && !memcmp(ap_info.ssid, wifi_config.sta.ssid, strlen((char *)ap_info.ssid))) {
+        memcpy(passwd, wifi_config.sta.password, HAL_MAX_PASSWD_LEN);
+        printf("wifi passwd: %s", passwd);
+    } else {
+        memset(passwd, 0, HAL_MAX_PASSWD_LEN);
+    }
     return 0;
 }
+#endif
