@@ -6,6 +6,7 @@ COMPONENT_ADD_INCLUDEDIRS :=	\
 iotkit-embedded/include			\
 iotkit-embedded/include/imports		\
 iotkit-embedded/include/exports		\
+iotkit-embedded/src/services/awss	\
 platform/hal
 
 COMPONENT_SRCDIRS :=			\
