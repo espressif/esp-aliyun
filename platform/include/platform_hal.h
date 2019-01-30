@@ -43,4 +43,15 @@ void esp_init_wifi_event_group();
  */
 uint32_t HAL_Wait_Net_Ready(uint32_t block_time_tick);
 
+/*
+* @brief provide wifi event callback for user
+*
+* awss already has wifi event callback, and will control all wifi state
+* here will provide wifi event for user to know what wifi event happened
+* please do not call system wifi interface in cb
+*
+* @param cb: callback for user, will call it when system wifi event happened
+*/
+void set_user_wifi_event_cb(system_event_cb_t cb);
+
 #endif // !PLATFORM_HAL_H_
