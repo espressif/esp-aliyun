@@ -128,6 +128,7 @@ void HAL_Free(_IN_ void *ptr)
 }
 
 #ifdef CONFIG_TARGET_PLATFORM_ESP8266
+// notes: clock_gettime has already defined on ESP-IDF
 int clock_gettime(int clk_id, struct timespec *t)
 {
     struct timeval now;
@@ -467,7 +468,7 @@ void HAL_ThreadDelete(_IN_ void *thread_handle)
 }
 
 esp_ota_handle_t update_handle = 0 ;
-esp_partition_t *update_partition = NULL;
+const esp_partition_t *update_partition = NULL;
 uint32_t sum_download_bytes = 0;
 
 void HAL_Firmware_Persistence_Start(void)
@@ -710,16 +711,7 @@ long long HAL_UTC_Get(void)
 
 
 #ifdef CONFIG_IDF_TARGET_ESP32
-typedef enum {
-    TIMER_NOT_INIT = 0,
-    TIMER_CREATED,
-    TIMER_STARTED,
-    TIMER_STOPPED,
-    TIMER_DELETED
-} timer_state_t;
-
 typedef struct {
-    timer_state_t       current_state;
     esp_timer_handle_t  timer;
 } timer_handler;
 
@@ -743,12 +735,7 @@ void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
             .name = name
     };
 
-    esp_err_t ret = esp_timer_create(&timer_args, &(timer->timer));
-    if(ret != ESP_OK) {
-        timer->current_state = TIMER_NOT_INIT;
-    } else {
-        timer->current_state = TIMER_CREATED;
-    }
+    esp_timer_create(&timer_args, &(timer->timer));
 
     return (void *)timer;
 }
@@ -761,18 +748,7 @@ int HAL_Timer_Start(void *input_timer, int ms)
     }
     timer_handler *timer = (timer_handler *)input_timer;
 
-    if( (timer->current_state == TIMER_NOT_INIT) 
-        || (timer->current_state == TIMER_STARTED) 
-        || (timer->current_state == TIMER_DELETED) ) {
-        return -1;
-    }
-
-    esp_err_t ret = esp_timer_start_once(timer->timer, ms);
-    if(ret == ESP_OK) {
-        timer->current_state = TIMER_STARTED;
-    }
-
-    return 0;
+    return esp_timer_start_periodic(timer->timer, ms);
 }
 
 int HAL_Timer_Stop(void *input_timer)
@@ -784,16 +760,7 @@ int HAL_Timer_Stop(void *input_timer)
 
     timer_handler *timer = (timer_handler *)input_timer;
 
-    if(timer->current_state != TIMER_STARTED) {
-        return -1;
-    }
-
-    esp_err_t ret = esp_timer_stop(timer->timer);
-    if(ret == ESP_OK) {
-        timer->current_state = TIMER_STOPPED;
-    }
-
-    return 0;
+    return esp_timer_stop(timer->timer);
 }
 
 int HAL_Timer_Delete(void *input_timer)
@@ -805,13 +772,12 @@ int HAL_Timer_Delete(void *input_timer)
 
     timer_handler *timer = (timer_handler *)input_timer;
 
-    if(timer->current_state == TIMER_DELETED || timer->current_state == TIMER_NOT_INIT) {
-        return -1;
-    }
+    esp_err_t ret = esp_timer_delete(timer->timer);
 
-    esp_timer_delete(timer->timer);
+    free(timer);
+    timer = NULL;
 
-    return 0;
+    return ret;
 }
 #endif
 
