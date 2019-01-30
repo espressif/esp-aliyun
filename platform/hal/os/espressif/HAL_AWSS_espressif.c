@@ -2,43 +2,42 @@
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
 #include "sdkconfig.h"
+
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include <string.h>
-#include "iot_import.h"
-
-
-#include "nvs.h"
-#include "nvs_flash.h"
-
-#include "lwip/sockets.h"
+#include "errno.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "freertos/timers.h"
+#include "lwip/sockets.h"
+
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "esp_log.h"
-#include "errno.h"
 #include "esp_err.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "esp_event_loop.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+
+#include "iot_import.h"
 
 #define NVS_KEY_WIFI_CONFIG "wifi_config"
 #define AWSS_SPACE_NAME     "AWSS_APP"
-
-extern EventGroupHandle_t wifi_event_group;
-extern const int CONNECTED_BIT;
-
 static const char *TAG = "awss_config";
-static awss_recv_80211_frame_cb_t g_sniffer_cb = NULL;
-static bool sys_net_is_ready = false;
-static TimerHandle_t g_timer = NULL;
-static SemaphoreHandle_t xSemConnet = NULL;
 
+// wifi
+static bool sys_net_is_ready = false;
+static const int CONNECTED_BIT = BIT0;
+static EventGroupHandle_t wifi_event_group;
+static SemaphoreHandle_t s_sem_connect_timeout = NULL;
+
+// awss
+static awss_recv_80211_frame_cb_t s_sniffer_cb = NULL;
 typedef void (*wifi_sta_rx_probe_req_t)(const uint8_t *frame, int len, int rssi);
 extern esp_err_t esp_wifi_set_sta_rx_probe_req(wifi_sta_rx_probe_req_t cb);
-static awss_wifi_mgmt_frame_cb_t g_callback = NULL;
-static uint8_t g_vendor_oui[3] = { 0 };
+static awss_wifi_mgmt_frame_cb_t s_awss_mgmt_frame_cb = NULL;
+static uint8_t s_esp_oui[3] = { 0 };
 
 #define HAL_LOGE( format, ... ) ESP_LOGE(TAG, "[%s, %d]:" format, __func__, __LINE__, ##__VA_ARGS__)
 
@@ -55,7 +54,7 @@ static uint8_t g_vendor_oui[3] = { 0 };
 
 int esp_info_erase(const char *key)
 {
-    int ret   = ESP_OK;
+    int ret = ESP_OK;
     nvs_handle handle = 0;
 
     if (key) {
@@ -77,7 +76,7 @@ ssize_t esp_info_save(const char *key, const void *value, size_t length)
     int ret = ESP_OK;
     nvs_handle handle = 0;
 
-    if (key == NULL || value == NULL || length < 0) {
+    if (key == NULL || value == NULL) {
         return -1;
     }
     
@@ -108,7 +107,7 @@ ssize_t esp_info_load(const char *key, void *value, size_t length)
     int ret = ESP_OK;
     nvs_handle handle = 0;
 
-    if (key == NULL || value == NULL || length < 0) {
+    if (key == NULL || value == NULL) {
         return -1;
     }
 
@@ -119,13 +118,12 @@ ssize_t esp_info_load(const char *key, void *value, size_t length)
     nvs_close(handle);
 
     if (ret == ESP_ERR_NVS_NOT_FOUND) {
-        printf("No data storage,the load data is empty");
+        ESP_LOGW(TAG,"No data storage,the load data is empty");
         return -1;
     }
     AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_get_blob ret:%x", ret);
     return length;
 }
-
 
 /**
  * @brief   获取`smartconfig`服务的安全等级
@@ -208,7 +206,6 @@ int HAL_Awss_Get_Channelscan_Interval_Ms(void)
     return 250;
 }
 
-
 /**
  * @brief   802.11帧的处理函数, 可以将802.11 Frame传递给这个函数
  *
@@ -252,8 +249,8 @@ static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_
     }
 
     info.rssi = pkt->rx_ctrl.rssi;
-    if (g_sniffer_cb) {
-        g_sniffer_cb((char *)pkt->payload, pkt->rx_ctrl.sig_len - 4, link_type, with_fcs, info.rssi);
+    if (s_sniffer_cb) {
+        s_sniffer_cb((char *)pkt->payload, pkt->rx_ctrl.sig_len - 4, link_type, with_fcs, info.rssi);
     }
 }
 
@@ -267,15 +264,15 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
     if (cb == NULL) {
         return;
     }
-        
-    g_sniffer_cb = cb;
+
+    s_sniffer_cb = cb;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_sniffer_cb));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(1));
     ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
     ESP_ERROR_CHECK(esp_wifi_start());
-    printf("wifi running at monitor mode\r\n");
+    ESP_LOGI(TAG, "wifi running at monitor mode");
 }
 
 /**
@@ -286,7 +283,7 @@ void HAL_Awss_Close_Monitor(void)
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(NULL));
     ESP_ERROR_CHECK(esp_wifi_stop());
-    printf("close wifi monitor mode, and set running at station mode\r\n");
+    ESP_LOGI(TAG, "close wifi monitor mode, and set running at station mode");
 }
 
 /**
@@ -303,6 +300,7 @@ void HAL_Awss_Switch_Channel(
             _IN_OPT_ char secondary_channel,
             _IN_OPT_ uint8_t bssid[ETH_ALEN])
 {
+    // TODO: consider country code when set to limited channel
     esp_wifi_set_channel(primary_channel, secondary_channel);
 }
 
@@ -319,48 +317,50 @@ int HAL_Sys_Net_Is_Ready()
     return sys_net_is_ready;
 }
 
-static void wifi_connect_timer_cb(void *timer)
+uint32_t HAL_Wait_Net_Ready(uint32_t block_time_tick)
 {
-    if (!HAL_Sys_Net_Is_Ready()) {
-        ESP_ERROR_CHECK(esp_wifi_disconnect());
+    if (block_time_tick == 0) {
+        return (uint32_t)xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+    } else {
+        return (uint32_t)xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, block_time_tick);
     }
+}
 
-    xTimerStop(g_timer, 0);
-    xTimerDelete(g_timer, 0);
-    g_timer = NULL;
+void esp_init_wifi_event_group()
+{   
+    if(wifi_event_group) {
+        return;
+    }
+    wifi_event_group = xEventGroupCreate();
 }
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
     case SYSTEM_EVENT_STA_CONNECTED:
-        printf("EVENT_STAMODE_CONNECTED");
-        /*!< compatible with xiaomi company's R1C router */
-        if (!g_timer) {
-            g_timer = xTimerCreate("Timer", 4000 / portTICK_RATE_MS, false, NULL, wifi_connect_timer_cb);
-            xTimerStart(g_timer, 0);
-        }
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_CONNECTED");
         break;
+
     case SYSTEM_EVENT_STA_START:
-        printf("SYSTEM_EVENT_STA_START");
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_START");
         sys_net_is_ready = false;
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
+
     case SYSTEM_EVENT_STA_GOT_IP:
         sys_net_is_ready = true;
-        printf("SYSTEM_EVENT_STA_GOT_IP");
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_GOT_IP");
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        xSemaphoreGive(xSemConnet);
+        xSemaphoreGive(s_sem_connect_timeout);
         break;
+
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        printf("SYSTEM_EVENT_STA_DISCONNECTED, free_heap: %d", esp_get_free_heap_size());
+        ESP_LOGW(TAG,"SYSTEM_EVENT_STA_DISCONNECTED");
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         sys_net_is_ready = false;
-        int ret = esp_wifi_connect();
-        if (ret != ESP_OK) {
-            printf("esp_wifi_connect, ret: %d", ret);
-        }
+        esp_wifi_connect();
         break;
+
     default:
         break;
     }
@@ -398,8 +398,8 @@ int HAL_Awss_Connect_Ap(
     wifi_config_t wifi_config;
     int ret = 0;
 
-    if (xSemConnet == NULL) {
-        xSemConnet = xSemaphoreCreateBinary();
+    if (s_sem_connect_timeout == NULL) {
+        s_sem_connect_timeout = xSemaphoreCreateBinary();
         esp_event_loop_set_cb(event_handler, NULL);
     }
 
@@ -409,14 +409,15 @@ int HAL_Awss_Connect_Ap(
     memcpy(wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
     memcpy(wifi_config.sta.password, passwd, sizeof(wifi_config.sta.password));
 
-    printf("\r\n ap ssid: %s, password: %s", wifi_config.sta.ssid, wifi_config.sta.password);
+    ESP_LOGI(TAG,"ap ssid: %s, password: %s", wifi_config.sta.ssid, wifi_config.sta.password);
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ret = xSemaphoreTake(xSemConnet, connection_timeout_ms / portTICK_RATE_MS);
-    if (ret == pdFALSE) {
+    ret = xSemaphoreTake(s_sem_connect_timeout, connection_timeout_ms / portTICK_RATE_MS);
+    if (ret == pdFALSE) {   // connect timeout
         return -1; 
     }
+
     if (!strcmp(ssid, "aha")) {
         return 0;
     }
@@ -477,12 +478,12 @@ int HAL_Wifi_Send_80211_Raw_Frame(_IN_ enum HAL_Awss_Frame_Type type,
 static void wifi_sta_rx_probe_req(const uint8_t *frame, int len, int rssi)
 {
     vendor_ie_data_t *awss_ie_info = (vendor_ie_data_t *)(frame + 60);
-    if (awss_ie_info->element_id == WIFI_VENDOR_IE_ELEMENT_ID && awss_ie_info->length != 67 && !memcmp(awss_ie_info->vendor_oui, g_vendor_oui, 3)) {
+    if (awss_ie_info->element_id == WIFI_VENDOR_IE_ELEMENT_ID && awss_ie_info->length != 67 && !memcmp(awss_ie_info->vendor_oui, s_esp_oui, 3)) {
         if (awss_ie_info->vendor_oui_type == 171) {
-            printf("frame is no support, awss_ie_info->type: %d", awss_ie_info->vendor_oui_type);
+            ESP_LOGW(TAG,"frame is no support, awss_ie_info->type: %d", awss_ie_info->vendor_oui_type);
             return;
         }
-        g_callback((uint8_t *)awss_ie_info, awss_ie_info->length + 2, rssi, 1);
+        s_awss_mgmt_frame_cb((uint8_t *)awss_ie_info, awss_ie_info->length + 2, rssi, 1);
     }
 }
 
@@ -498,8 +499,8 @@ int HAL_Wifi_Enable_Mgmt_Frame_Filter(
 
     AWSS_ERROR_CHECK(filter_mask != (FRAME_PROBE_REQ_MASK | FRAME_BEACON_MASK), -2, "frame is no support, frame: 0x%x", filter_mask);
     
-    g_callback = callback;
-    memcpy(g_vendor_oui, vendor_oui, sizeof(g_vendor_oui));
+    s_awss_mgmt_frame_cb = callback;
+    memcpy(s_esp_oui, vendor_oui, sizeof(s_esp_oui));
     ret = esp_wifi_set_sta_rx_probe_req(wifi_sta_rx_probe_req);
     AWSS_ERROR_CHECK(ret != 0, -1, "esp_wifi_set_sta_rx_probe_req, ret: %d", ret);
     return 0;
@@ -532,7 +533,7 @@ int HAL_Wifi_Scan(awss_wifi_scan_result_cb_t cb)
     ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&wifi_ap_num));
 
-    printf("ap number: %d", wifi_ap_num);
+    ESP_LOGI(TAG,"ap number: %d", wifi_ap_num);
     ap_info = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * wifi_ap_num);
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&wifi_ap_num, ap_info));
     for (int i = 0; i < wifi_ap_num; ++i) {
@@ -585,7 +586,7 @@ int HAL_Wifi_Get_Ap_Info(
     ret = esp_info_load(NVS_KEY_WIFI_CONFIG, &wifi_config, sizeof(wifi_config_t));
     if (ret > 0 && !memcmp(ap_info.ssid, wifi_config.sta.ssid, strlen((char *)ap_info.ssid))) {
         memcpy(passwd, wifi_config.sta.password, HAL_MAX_PASSWD_LEN);
-        printf("wifi passwd: %s", passwd);
+        ESP_LOGI(TAG,"wifi passwd: %s", passwd);
     } else {
         memset(passwd, 0, HAL_MAX_PASSWD_LEN);
     }

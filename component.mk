@@ -7,7 +7,8 @@ iotkit-embedded/include			\
 iotkit-embedded/include/imports		\
 iotkit-embedded/include/exports		\
 iotkit-embedded/src/services/awss	\
-platform/hal
+platform/hal	\
+platform/include
 
 COMPONENT_SRCDIRS :=			\
 platform/hal/os/espressif
