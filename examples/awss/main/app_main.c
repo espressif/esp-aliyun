@@ -73,11 +73,13 @@ static void initialise_wifi(void)
 {
     tcpip_adapter_init();
     esp_init_wifi_event_group();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_loop_init(NULL, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+
+    set_user_wifi_event_cb(event_handler);
 }
 
 void set_iotx_info()

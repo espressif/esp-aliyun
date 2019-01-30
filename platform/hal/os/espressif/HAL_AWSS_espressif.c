@@ -31,6 +31,7 @@ static bool sys_net_is_ready = false;
 static const int CONNECTED_BIT = BIT0;
 static EventGroupHandle_t wifi_event_group;
 static SemaphoreHandle_t s_sem_connect_timeout = NULL;
+static system_event_cb_t s_user_wifi_event_cb = NULL;
 
 // awss
 static awss_recv_80211_frame_cb_t s_sniffer_cb = NULL;
@@ -334,6 +335,11 @@ void esp_init_wifi_event_group()
     wifi_event_group = xEventGroupCreate();
 }
 
+void set_user_wifi_event_cb(system_event_cb_t cb)
+{
+    s_user_wifi_event_cb = cb;
+}
+
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
@@ -364,6 +370,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     default:
         break;
     }
+
+    // call user wifi event
+    if(s_user_wifi_event_cb) {
+        (*s_user_wifi_event_cb)(ctx, event);
+    }
+
     return 0;
 }
 /**
