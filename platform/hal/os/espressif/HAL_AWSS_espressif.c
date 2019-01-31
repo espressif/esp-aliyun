@@ -29,7 +29,7 @@ static const char *TAG = "awss_config";
 // wifi
 static bool sys_net_is_ready = false;
 static const int CONNECTED_BIT = BIT0;
-static EventGroupHandle_t wifi_event_group;
+static EventGroupHandle_t wifi_event_group = NULL;
 static SemaphoreHandle_t s_sem_connect_timeout = NULL;
 static system_event_cb_t s_user_wifi_event_cb = NULL;
 
@@ -320,6 +320,11 @@ int HAL_Sys_Net_Is_Ready()
 
 uint32_t HAL_Wait_Net_Ready(uint32_t block_time_tick)
 {
+    if(wifi_event_group == NULL) {
+        ESP_LOGE(TAG, "wifi_event_group not init");
+        return 0;
+    }
+
     if (block_time_tick == 0) {
         return (uint32_t)xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
     } else {
@@ -356,14 +361,20 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     case SYSTEM_EVENT_STA_GOT_IP:
         sys_net_is_ready = true;
         ESP_LOGI(TAG,"SYSTEM_EVENT_STA_GOT_IP");
-        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        if(wifi_event_group) {
+            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        }
+
         xSemaphoreGive(s_sem_connect_timeout);
         break;
 
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        ESP_LOGW(TAG,"SYSTEM_EVENT_STA_DISCONNECTED");
-        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         sys_net_is_ready = false;
+        ESP_LOGW(TAG,"SYSTEM_EVENT_STA_DISCONNECTED");
+        if(wifi_event_group) {
+            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        }
+
         esp_wifi_connect();
         break;
 
