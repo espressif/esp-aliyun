@@ -54,4 +54,12 @@ uint32_t HAL_Wait_Net_Ready(uint32_t block_time_tick);
 */
 void set_user_wifi_event_cb(system_event_cb_t cb);
 
+/*
+* @brief nvs load key-value
+*
+* get saved config from the flash
+* 
+*/
+ssize_t esp_info_load(const char *key, void *value, size_t length);
+
 #endif // !PLATFORM_HAL_H_
