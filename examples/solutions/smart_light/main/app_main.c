@@ -218,6 +218,7 @@ void app_main()
         // make sure user touches device belong to themselves
         awss_set_config_press(1);
 
+        set_iotx_info();
         // awss callback
         iotx_event_regist_cb(linkkit_event_monitor);
 

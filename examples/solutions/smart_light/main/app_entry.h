@@ -15,4 +15,7 @@ typedef struct {
 }app_main_paras_t;
 
 int linkkit_main(void *paras);
+
+void set_iotx_info();
+
 #endif
