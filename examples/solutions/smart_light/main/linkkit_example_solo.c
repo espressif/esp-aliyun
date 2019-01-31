@@ -8,11 +8,14 @@
 #include "iot_export_linkkit.h"
 #include "cJSON.h"
 #include "app_entry.h"
+#include "light_control.h"
+#include "esp_log.h"
 
 #if defined(OTA_ENABLED) && defined(BUILD_AOS)
     #include "ota_service.h"
 #endif
 
+static const char *TAG = "solo";
 #define USE_CUSTOME_DOMAIN      (0)
 
 // for demo only
@@ -153,11 +156,56 @@ static int user_service_request_event_handler(const int devid, const char *servi
     return 0;
 }
 
+static rgb_t s_rgb = {50, 50, 50};
+
+static void user_parse_cloud_cmd(const char *request, const int request_len)
+{
+    if(request == NULL || request_len <= 0) {
+        return;
+    }
+
+    char* ptr = NULL;
+    // TODO: parse it as fixed format JSON string
+    if(strstr(request, "LightSwitch") != NULL) {        // {"LightSwitch":0}
+        ptr = strstr(request, ":");
+        ptr++;
+        bool on = atoi(ptr);
+        if(on) {
+            ESP_LOGI(TAG, "Set R:%d G:%d B:%d", s_rgb.r, s_rgb.g, s_rgb.b);
+            lightbulb_set_aim(s_rgb.r * PWM_TARGET_DUTY / 100, s_rgb.g * PWM_TARGET_DUTY / 100, s_rgb.b * PWM_TARGET_DUTY / 100, 0, 0, 0);
+        } else {
+            ESP_LOGI(TAG, "Set Light OFF");
+            lightbulb_set_aim(0, 0, 0, 0, 0, 0);
+        }
+
+    } else if (strstr(request, "RGBColor") != NULL) {   // {"RGBColor":{"Red":120,"Blue":36,"Green":108}}
+        ptr = strstr(request, "Red");
+        ptr += 5;
+        s_rgb.r = atoi(ptr);
+
+        ptr = strstr(request, "Blue");
+        ptr += 6;
+        s_rgb.g = atoi(ptr);
+        
+        ptr = strstr(request, "Green");
+        ptr += 7;
+        s_rgb.b = atoi(ptr);
+
+        ESP_LOGI(TAG, "Set R:%d G:%d B:%d", s_rgb.r, s_rgb.g, s_rgb.b);
+        lightbulb_set_aim(s_rgb.r * PWM_TARGET_DUTY / 100, s_rgb.g * PWM_TARGET_DUTY / 100, s_rgb.b * PWM_TARGET_DUTY / 100, 0, 0, 0);
+
+    } else {
+        ESP_LOGW(TAG, "unsupported JSON cmd");
+    }
+}
+
 static int user_property_set_event_handler(const int devid, const char *request, const int request_len)
 {
     int res = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     EXAMPLE_TRACE("Property Set Received, Devid: %d, Request: %s", devid, request);
+
+    user_parse_cloud_cmd(request, request_len);
 
     res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
