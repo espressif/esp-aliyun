@@ -5,6 +5,7 @@
 
 # IDF compile output
 examples/*/build/*
+examples/*/*/build/*
 
 # config
 sdkconfig
