@@ -1,7 +1,7 @@
 /*
  * ESPRSSIF MIT License
  *
- * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
  * Permission is hereby granted for use on ESPRESSIF SYSTEMS ESP32 only, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
@@ -34,36 +34,27 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "app_entry.h"
-
 #include "iot_export.h"
 #include "iot_import.h"
 #include "awss.h"
+#include "platform_hal.h"
+#include "app_entry.h"
 
-/* FreeRTOS event group to signal when we are connected & ready to make a request */
-EventGroupHandle_t wifi_event_group;
-
-/* The event group allows multiple bits for each event,
-   but we only care about one event - are we connected
-   to the AP with an IP? */
-const int CONNECTED_BIT = BIT0;
 static const char* TAG = "app main";
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_START:
-            esp_wifi_connect();
+            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
             break;
 
         case SYSTEM_EVENT_STA_GOT_IP:
+            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
-            /* This is a workaround as ESP8266 WiFi libs don't currently
-               auto-reassociate. */
-            esp_wifi_connect();
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+            ESP_LOGW(TAG, "SYSTEM_EVENT_STA_DISCONNECTED");
             break;
 
         default:
@@ -76,101 +67,99 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 static void initialise_wifi(void)
 {
     tcpip_adapter_init();
-    wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
+    esp_init_wifi_event_group();
+    ESP_ERROR_CHECK(esp_event_loop_init(NULL, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+
+    set_user_wifi_event_cb(event_handler);
 }
 
 void smart_light_example(void* parameter)
 {
     while(1) {
-        ESP_LOGI(TAG, "wait wifi connect...");
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+        // wait for WiFi connected
+        HAL_Wait_Net_Ready(0);
+        ESP_LOGI(TAG, "Network is Ready!");
 
         app_main_paras_t paras;
-        const char* argv[] = {"main", "loop"};
+        char* argv[] = {"main", "loop"};
         paras.argc = 2;
         paras.argv = argv; 
-    
         ESP_LOGI(TAG, "entry linkkit main...");
         linkkit_main((void *)&paras);
     }
 }
-
 
 static void linkkit_event_monitor(int event)
 {
     switch (event) {
         case IOTX_AWSS_START: // AWSS start without enbale, just supports device discover
             // operate led to indicate user
-            ESP_LOGW(TAG, "IOTX_AWSS_START");
+            ESP_LOGI(TAG, "IOTX_AWSS_START");
             break;
         case IOTX_AWSS_ENABLE: // AWSS enable, AWSS doesn't parse awss packet until AWSS is enabled.
-            ESP_LOGW(TAG, "IOTX_AWSS_ENABLE");
+            ESP_LOGI(TAG, "IOTX_AWSS_ENABLE");
             // operate led to indicate user
             break;
         case IOTX_AWSS_LOCK_CHAN: // AWSS lock channel(Got AWSS sync packet)
-            ESP_LOGW(TAG, "IOTX_AWSS_LOCK_CHAN");
+            ESP_LOGI(TAG, "IOTX_AWSS_LOCK_CHAN");
             // operate led to indicate user
             break;
         case IOTX_AWSS_PASSWD_ERR: // AWSS decrypt passwd error
-            ESP_LOGW(TAG, "IOTX_AWSS_PASSWD_ERR");
+            ESP_LOGE(TAG, "IOTX_AWSS_PASSWD_ERR");
             // operate led to indicate user
             break;
         case IOTX_AWSS_GOT_SSID_PASSWD:
-            ESP_LOGW(TAG, "IOTX_AWSS_GOT_SSID_PASSWD");
-            // awss_stop();
+            ESP_LOGI(TAG, "IOTX_AWSS_GOT_SSID_PASSWD");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_ADHA: // AWSS try to connnect adha (device
                                      // discover, router solution)
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_ADHA");
+            ESP_LOGI(TAG, "IOTX_AWSS_CONNECT_ADHA");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_ADHA_FAIL: // AWSS fails to connect adha
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_ADHA_FAIL");
+            ESP_LOGE(TAG, "IOTX_AWSS_CONNECT_ADHA_FAIL");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_AHA: // AWSS try to connect aha (AP solution)
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_AHA");
+            ESP_LOGI(TAG, "IOTX_AWSS_CONNECT_AHA");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_AHA_FAIL: // AWSS fails to connect aha
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_AHA_FAIL");
+            ESP_LOGE(TAG, "IOTX_AWSS_CONNECT_AHA_FAIL");
             // operate led to indicate user
             break;
         case IOTX_AWSS_SETUP_NOTIFY: // AWSS sends out device setup information
                                      // (AP and router solution)
-            ESP_LOGW(TAG, "IOTX_AWSS_SETUP_NOTIFY");
+            ESP_LOGI(TAG, "IOTX_AWSS_SETUP_NOTIFY");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_ROUTER: // AWSS try to connect destination router
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_ROUTER");
+            ESP_LOGI(TAG, "IOTX_AWSS_CONNECT_ROUTER");
             // operate led to indicate user
             break;
         case IOTX_AWSS_CONNECT_ROUTER_FAIL: // AWSS fails to connect destination
                                             // router.
-            ESP_LOGW(TAG, "IOTX_AWSS_CONNECT_ROUTER_FAIL");
+            ESP_LOGE(TAG, "IOTX_AWSS_CONNECT_ROUTER_FAIL");
             // operate led to indicate user
             break;
         case IOTX_AWSS_GOT_IP: // AWSS connects destination successfully and got
                                // ip address
-            ESP_LOGW(TAG, "IOTX_AWSS_GOT_IP");
-
-            // awss_report_cloud();
+            ESP_LOGI(TAG, "IOTX_AWSS_GOT_IP");
             // operate led to indicate user
             break;
         case IOTX_AWSS_SUC_NOTIFY: // AWSS sends out success notify (AWSS
                                    // sucess)
-            ESP_LOGW(TAG, "IOTX_AWSS_SUC_NOTIFY");
+            ESP_LOGI(TAG, "IOTX_AWSS_SUC_NOTIFY");
             // operate led to indicate user
             break;
         case IOTX_AWSS_BIND_NOTIFY: // AWSS sends out bind notify information to
                                     // support bind between user and device
-            ESP_LOGW(TAG, "IOTX_AWSS_BIND_NOTIFY");
+            ESP_LOGI(TAG, "IOTX_AWSS_BIND_NOTIFY");
             awss_stop();
             // operate led to indicate user
             break;
@@ -180,27 +169,28 @@ static void linkkit_event_monitor(int event)
             // operate led to indicate user
             break;
         case IOTX_CONN_CLOUD: // Device try to connect cloud
-            ESP_LOGW(TAG, "IOTX_CONN_CLOUD");
+            ESP_LOGI(TAG, "IOTX_CONN_CLOUD");
             // operate led to indicate user
             break;
         case IOTX_CONN_CLOUD_FAIL: // Device fails to connect cloud, refer to
                                    // net_sockets.h for error code
-            ESP_LOGW(TAG, "IOTX_CONN_CLOUD_FAIL");
+            ESP_LOGE(TAG, "IOTX_CONN_CLOUD_FAIL");
             // operate led to indicate user
             break;
         case IOTX_CONN_CLOUD_SUC: // Device connects cloud successfully
-            ESP_LOGW(TAG, "IOTX_CONN_CLOUD_SUC");
+            ESP_LOGI(TAG, "IOTX_CONN_CLOUD_SUC");
             // operate led to indicate user
             break;
         case IOTX_RESET: // Linkkit reset success (just got reset response from
                          // cloud without any other operation)
-            ESP_LOGW(TAG, "IOTX_RESET");
+            ESP_LOGI(TAG, "IOTX_RESET");
             // operate led to indicate user
             break;
         default:
             break;
     }
 }
+
 
 void app_main()
 {
@@ -212,25 +202,19 @@ void app_main()
         ret = nvs_flash_init();
     }
 
-    void LITE_set_loglevel(int pri);
-    LITE_set_loglevel(6);
-
     ESP_ERROR_CHECK(ret);
 
     initialise_wifi();
 
+    // make sure user touches device belong to themselves
     awss_set_config_press(1);
 
+    // awss callback
     iotx_event_regist_cb(linkkit_event_monitor);
-    
-    void set_iotx_info();
 
-    set_iotx_info();
-
-    esp_timer_init();
+    // awss entry
+    awss_start();
 
     xTaskCreate(smart_light_example, "smart_light_example", 10240, NULL, 5, NULL);
-
-    awss_start();
 }
 
