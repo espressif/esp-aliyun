@@ -377,6 +377,7 @@ static int user_cota_event_handler(int type, const char *config_id, int config_s
     return 0;
 }
 
+#if 0
 static uint64_t user_update_sec(void)
 {
     static uint64_t time_start_ms = 0;
@@ -387,6 +388,7 @@ static uint64_t user_update_sec(void)
 
     return (HAL_UptimeMs() - time_start_ms) / 1000;
 }
+#endif
 
 void user_post_property(void)
 {
@@ -503,6 +505,7 @@ void user_post_raw_data(void)
     EXAMPLE_TRACE("Post Raw Data Message ID: %d", res);
 }
 
+#if 0
 static int user_master_dev_available(void)
 {
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
@@ -513,6 +516,7 @@ static int user_master_dev_available(void)
 
     return 0;
 }
+#endif
 
 void set_iotx_info()
 {
@@ -522,12 +526,12 @@ void set_iotx_info()
     HAL_SetDeviceSecret(DEVICE_SECRET);
 }
 
-static int max_running_seconds = 0;
+// static int max_running_seconds = 0;
 int linkkit_main(void *paras)
 {
 
-    uint64_t                        time_prev_sec = 0, time_now_sec = 0;
-    uint64_t                        time_begin_sec = 0;
+    // uint64_t                        time_prev_sec = 0, time_now_sec = 0;
+    // uint64_t                        time_begin_sec = 0;
     int                             res = 0;
     iotx_linkkit_dev_meta_info_t    master_meta_info;
     user_example_ctx_t             *user_example_ctx = user_example_get_ctx();
@@ -604,10 +608,10 @@ int linkkit_main(void *paras)
         return -1;
     }
 
-    time_begin_sec = user_update_sec();
+    // time_begin_sec = user_update_sec();
     while (1) {
         IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
-
+#if 0
         time_now_sec = user_update_sec();
         if (time_prev_sec == time_now_sec) {
             continue;
@@ -642,6 +646,7 @@ int linkkit_main(void *paras)
         }
 
         time_prev_sec = time_now_sec;
+#endif
     }
 
     IOT_Linkkit_Close(user_example_ctx->master_devid);
