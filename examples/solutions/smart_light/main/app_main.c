@@ -39,8 +39,11 @@
 #include "awss.h"
 #include "platform_hal.h"
 #include "app_entry.h"
+#include "iot_import_awss.h"
 
 static const char* TAG = "app main";
+#define NVS_KEY_WIFI_CONFIG "wifi_config"
+#define CONNECT_AP_TIMEOUT 60000
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -206,14 +209,20 @@ void app_main()
 
     initialise_wifi();
 
-    // make sure user touches device belong to themselves
-    awss_set_config_press(1);
+    wifi_config_t wifi_config;
+    ret = esp_info_load(NVS_KEY_WIFI_CONFIG, &wifi_config, sizeof(wifi_config_t));
+    if(ret < 0) {
+        // make sure user touches device belong to themselves
+        awss_set_config_press(1);
 
-    // awss callback
-    iotx_event_regist_cb(linkkit_event_monitor);
+        // awss callback
+        iotx_event_regist_cb(linkkit_event_monitor);
 
-    // awss entry
-    awss_start();
+        // awss entry
+        awss_start();
+    } else {
+        HAL_Awss_Connect_Ap(CONNECT_AP_TIMEOUT, (char*)(wifi_config.sta.ssid), (char*)(wifi_config.sta.password), 0, 0, NULL, 0);
+    }
 
     xTaskCreate(smart_light_example, "smart_light_example", 10240, NULL, 5, NULL);
 }
