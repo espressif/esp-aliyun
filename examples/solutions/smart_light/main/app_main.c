@@ -40,6 +40,7 @@
 #include "platform_hal.h"
 #include "app_entry.h"
 #include "iot_import_awss.h"
+#include "light_control.h"
 
 static const char* TAG = "app main";
 #define NVS_KEY_WIFI_CONFIG "wifi_config"
@@ -206,6 +207,8 @@ void app_main()
     }
 
     ESP_ERROR_CHECK(ret);
+
+    led_light_start();
 
     initialise_wifi();
 
