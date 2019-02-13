@@ -200,6 +200,10 @@ void app_main()
 
     ESP_ERROR_CHECK(ret);
 
+    ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
+    ESP_LOGI(TAG, "esp-aliyun verison: %s", HAL_GetEAVerison());
+    ESP_LOGI(TAG, "iotkit-embedded version: %s", HAL_GetIEVerison());
+
     initialise_wifi();
 
     // make sure user touches device belong to themselves
