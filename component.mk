@@ -2,6 +2,15 @@
 
 # CFLAGS +=
 
+# version of iotkit-embedded: https://github.com/aliyun/iotkit-embedded
+IE_VER := $(shell cd ${IE_PATH} && git describe --always --tags --dirty)
+
+# version of esp-aliyun: https://github.com/espressif/esp-aliyun
+EA_VER := $(shell cd ${ESP_ALIYUN_PATH} && git describe --always --tags --dirty)
+
+CFLAGS += -DIE_VER=\"$(IE_VER)\"
+CFLAGS += -DEA_VER=\"$(EA_VER)\"
+
 COMPONENT_ADD_INCLUDEDIRS :=	\
 iotkit-embedded/include			\
 iotkit-embedded/include/imports		\

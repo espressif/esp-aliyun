@@ -39,6 +39,7 @@
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "sdkconfig.h"
+#include "platform_hal.h"
 
 static const char* OS_TAG = "HAL-OS";
 
@@ -395,7 +396,7 @@ int HAL_GetDeviceSecret(_OU_ char *device_secret)
  */
 int HAL_GetFirmwareVersion(_OU_ char *version)
 {
-    char *ver = "app-1.0.0-20180101.1000";
+    const char *ver = HAL_GetEAVerison();
     int len = strlen(ver);
     memset(version, 0x0, FIRMWARE_VERSION_MAXLEN);
 #ifdef __DEMO__
@@ -403,6 +404,16 @@ int HAL_GetFirmwareVersion(_OU_ char *version)
     version[len] = '\0';
 #endif
     return strlen(version);
+}
+
+const char* HAL_GetIEVerison(void)
+{
+    return IE_VER;
+}
+
+const char* HAL_GetEAVerison(void)
+{
+    return EA_VER;
 }
 
 void *HAL_SemaphoreCreate(void)

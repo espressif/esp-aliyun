@@ -25,7 +25,7 @@
 #define PLATFORM_HAL_H_
 
 #include <stdint.h>
-
+#include "esp_event_loop.h"
 /*
 * @brief init wifi event group
 * This function should be called when init wifi if using awss
@@ -61,5 +61,11 @@ void set_user_wifi_event_cb(system_event_cb_t cb);
 * 
 */
 ssize_t esp_info_load(const char *key, void *value, size_t length);
+
+// version of iotkit-embedded
+const char* HAL_GetIEVerison(void);
+
+// version of esp-aliyun
+const char* HAL_GetEAVerison(void);
 
 #endif // !PLATFORM_HAL_H_
