@@ -105,6 +105,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 
     return (uintptr_t)rc;
 #else
+    int on = 1;
     int32_t ret = 0;
     int32_t socketfd = -1;
     struct sockaddr_in sock_addr;
@@ -115,14 +116,13 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
         vTaskDelay(500 / portTICK_RATE_MS);
     } while (entry == NULL);
 
-    printf("Creat socket ...\n");
+    printf("Creat socket ...");
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (socketfd < 0) {
         printf("Creat socket failed...\n");
         return -1;
     }
-    
     
     printf("OK\n");
 
@@ -131,6 +131,7 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_addr.s_addr = 0;
     sock_addr.sin_port = htons(port);
+
     ret = bind(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
 
     if (ret) {
@@ -141,6 +142,14 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 
     printf("OK\n");
 
+    printf("setsockopt SO_REUSEADDR......");
+    ret = setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    if (ret) {
+        printf("failed\n");
+    } else {
+        printf("OK\n");
+    }
+
     memset(&sock_addr, 0, sizeof(sock_addr));
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(port);
@@ -148,15 +157,16 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 
     hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
 
-    ret = connect(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+    do {
+        ret = connect(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+        if (ret) {
+            hal_warning("Connecting to %s:%d failed: %d\n", host, port, ret);
+                vTaskDelay(1000 / portTICK_RATE_MS);
+            } else {
+                hal_info("OK, fd:%d", socketfd);
+        }
+    } while(ret != 0);
 
-    if (ret) {
-        printf("Connecting to %s:%d failed: %d\n", host, port, ret);
-        close(socketfd);
-        return -1;
-    }
-    
-    hal_info("OK, fd:%d", socketfd);
     return socketfd;
 #endif
 }
