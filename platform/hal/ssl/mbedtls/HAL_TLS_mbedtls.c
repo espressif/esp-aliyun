@@ -29,6 +29,10 @@
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
 
+#ifdef CONFIG_MBEDTLS_DEBUG
+#include "mbedtls/esp_debug.h"
+#endif
+
 #define SEND_TIMEOUT_SECONDS                (10)
 #define GUIDER_ONLINE_HOSTNAME              ("iot-auth.cn-shanghai.aliyuncs.com")
 #define GUIDER_PRE_ADDRESS                  ("100.67.80.107")
@@ -413,6 +417,10 @@ static int _TLSConnectNetwork(TLSDataParams_t *pTlsData, const char *addr, const
     mbedtls_ssl_conf_rng(&(pTlsData->conf), _ssl_random, NULL);
     mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, NULL);
     mbedtls_ssl_conf_dbg(&(pTlsData->conf), _ssl_debug, stdout);
+
+#ifdef CONFIG_MBEDTLS_DEBUG
+    mbedtls_esp_enable_debug_log(&(pTlsData->conf), 4);
+#endif
 
     if ((ret = mbedtls_ssl_setup(&(pTlsData->ssl), &(pTlsData->conf))) != 0) {
         hal_err("failed! mbedtls_ssl_setup returned %d", ret);
