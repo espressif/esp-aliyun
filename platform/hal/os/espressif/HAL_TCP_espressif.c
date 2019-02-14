@@ -49,65 +49,9 @@ static uint64_t _linux_time_left(uint64_t t_end, uint64_t t_now)
 
 uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 {
-#if 0
-    struct addrinfo hints;
-    struct addrinfo *addrInfoList = NULL;
-    struct addrinfo *cur = NULL;
-    int fd = 0;
-    int rc = 0;
-    char service[6];
-
-    memset(&hints, 0, sizeof(hints));
-
-    hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
-
-    hints.ai_family = AF_INET; /* only IPv4 */
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    sprintf(service, "%u", port);
-
-    if ((rc = getaddrinfo(host, service, &hints, &addrInfoList)) != 0) {
-        hal_err("getaddrinfo error");
-        return 0;
-    }
-
-    for (cur = addrInfoList; cur != NULL; cur = cur->ai_next) {
-        if (cur->ai_family != AF_INET) {
-            hal_err("socket type error");
-            rc = 0;
-            continue;
-        }
-
-        fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
-        if (fd < 0) {
-            hal_err("create socket error");
-            rc = 0;
-            continue;
-        }
-
-        printf("fd:%d addr:%s port:%d\n" ,fd, cur->ai_addr->sin_addr.saddr,  cur->ai_addr->sin_port);
-        if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0) {
-            rc = fd;
-            break;
-        }
-
-        close(fd);
-        hal_err("connect error");
-        rc = 0;
-    }
-
-    if (0 == rc) {
-        hal_err("fail to establish tcp");
-    } else {
-        hal_info("success to establish tcp, fd=%d", rc);
-    }
-    freeaddrinfo(addrInfoList);
-
-    return (uintptr_t)rc;
-#else
     int on = 1;
     int32_t ret = 0;
-    int32_t socketfd = -1;
+    int32_t client_fd = -1;
     struct sockaddr_in sock_addr;
     struct hostent* entry = NULL;
 
@@ -116,38 +60,38 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
         vTaskDelay(500 / portTICK_RATE_MS);
     } while (entry == NULL);
 
-    printf("Creat socket ...");
-    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    hal_info("Creat socket ...");
+    client_fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    if (socketfd < 0) {
-        printf("Creat socket failed...\n");
+    if (client_fd < 0) {
+        hal_err("Creat socket failed...");
         return -1;
     }
     
-    printf("OK\n");
+    hal_info("OK");
 
-    printf("bind socket ......");
+    hal_info("bind socket ......");
     memset(&sock_addr, 0, sizeof(sock_addr));
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_addr.s_addr = 0;
     sock_addr.sin_port = htons(port);
 
-    ret = bind(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+    ret = bind(client_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
 
     if (ret) {
-        printf("failed\n");
-        close(socketfd);
+        hal_err("failed");
+        close(client_fd);
         return -1;
     }
 
-    printf("OK\n");
+    hal_info("OK");
 
-    printf("setsockopt SO_REUSEADDR......");
-    ret = setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    hal_info("setsockopt SO_REUSEADDR......");
+    ret = setsockopt(client_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
     if (ret) {
-        printf("failed\n");
+        hal_warning("failed");
     } else {
-        printf("OK\n");
+        hal_info("OK");
     }
 
     memset(&sock_addr, 0, sizeof(sock_addr));
@@ -158,17 +102,16 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
 
     do {
-        ret = connect(socketfd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+        ret = connect(client_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
         if (ret) {
             hal_warning("Connecting to %s:%d failed: %d\n", host, port, ret);
                 vTaskDelay(1000 / portTICK_RATE_MS);
             } else {
-                hal_info("OK, fd:%d", socketfd);
+                hal_info("OK, fd:%d", client_fd);
         }
     } while(ret != 0);
 
-    return socketfd;
-#endif
+    return client_fd;
 }
 
 
