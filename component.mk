@@ -16,6 +16,7 @@ iotkit-embedded/include			\
 iotkit-embedded/include/imports		\
 iotkit-embedded/include/exports		\
 iotkit-embedded/src/services/awss	\
+platform/crypto/include	\
 platform/hal	\
 platform/include
 
@@ -24,7 +25,8 @@ platform/hal/os/espressif
 
 ifdef CONFIG_TARGET_PLATFORM_ESP8266
 # ESP8266 platform
-COMPONENT_SRCDIRS += platform/hal/ssl/openssl
+COMPONENT_SRCDIRS += platform/crypto/src	\
+platform/hal/ssl/openssl
 
 else
 # ESP32 platform
