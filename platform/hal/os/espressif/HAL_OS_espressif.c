@@ -35,6 +35,7 @@
 #include "iotx_hal_internal.h"
 
 #include "esp_wifi.h"
+#include "esp_timer.h"
 #include "nvs.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
@@ -470,7 +471,11 @@ void HAL_ThreadDetach(_IN_ void *thread_handle)
 void HAL_ThreadDelete(_IN_ void *thread_handle)
 {
     if (NULL == thread_handle) {
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    	ESP_LOGE(OS_TAG, "%s: esp82666 not supported!", __FUNCTION__);
+#else
         pthread_exit(0);
+#endif
     } else {
         /*main thread delete child thread*/
         pthread_cancel((pthread_t)thread_handle);
@@ -720,8 +725,6 @@ long long HAL_UTC_Get(void)
     return delta_time + os_time_get();
 }
 
-
-#ifdef CONFIG_IDF_TARGET_ESP32
 typedef struct {
     esp_timer_handle_t  timer;
 } timer_handler;
@@ -790,7 +793,6 @@ int HAL_Timer_Delete(void *input_timer)
 
     return ret;
 }
-#endif
 
 int HAL_GetNetifInfo(char *nif_str)
 {

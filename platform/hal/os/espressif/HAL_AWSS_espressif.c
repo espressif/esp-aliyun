@@ -3,13 +3,13 @@
  */
 #include "sdkconfig.h"
 
-#ifdef CONFIG_IDF_TARGET_ESP32
 #include <string.h>
 #include "errno.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/timers.h"
+#include "freertos/semphr.h"
 #include "lwip/sockets.h"
 
 #include "esp_system.h"
@@ -251,7 +251,11 @@ static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_
 
     info.rssi = pkt->rx_ctrl.rssi;
     if (s_sniffer_cb) {
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    	ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
+#else
         s_sniffer_cb((char *)pkt->payload, pkt->rx_ctrl.sig_len - 4, link_type, with_fcs, info.rssi);
+#endif
     }
 }
 
@@ -615,4 +619,3 @@ int HAL_Wifi_Get_Ap_Info(
     }
     return 0;
 }
-#endif
