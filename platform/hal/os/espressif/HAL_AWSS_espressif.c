@@ -250,7 +250,7 @@ static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_
         return;
     }
     info.rssi = pkt->rx_ctrl.rssi;
-#ifdef CONFIG_IDF_TARGET_ESP8266
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
     uint8_t total_num = 1, count=0;
     uint16_t seq_buf=0;
 
@@ -509,7 +509,7 @@ int HAL_Wifi_Send_80211_Raw_Frame(_IN_ enum HAL_Awss_Frame_Type type,
     if (buffer) {
         return -2;
     }
-#ifdef CONFIG_IDF_TARGET_ESP8266
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
     int ret = esp_wifi_send_pkt_freedom(buffer, len, true);
 #else
     extern esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
