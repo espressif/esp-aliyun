@@ -242,21 +242,54 @@ static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_
 {
     int with_fcs  = 0;
     int link_type = AWSS_LINK_TYPE_NONE;
+    uint16_t len = 0;
     wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)recv_buf;
     hal_wifi_link_info_t info;
 
     if (type != WIFI_PKT_DATA && type != WIFI_PKT_MGMT) {
         return;
     }
-
     info.rssi = pkt->rx_ctrl.rssi;
-    if (s_sniffer_cb) {
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
-    	ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
-#else
-        s_sniffer_cb((char *)pkt->payload, pkt->rx_ctrl.sig_len - 4, link_type, with_fcs, info.rssi);
-#endif
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    uint8_t total_num = 1, count=0;
+    uint16_t seq_buf=0;
+
+    if (pkt->rx_ctrl.aggregation) {
+        total_num = pkt->rx_ctrl.ampdu_cnt;
     }
+    for (count=0; count < total_num; count++) {
+        if (total_num > 1) {
+            if (pkt->rx_ctrl.sig_mode) {
+                pkt->rx_ctrl.HT_length = *((uint16_t *)&pkt->payload[40+2*count]);
+            } else {
+                pkt->rx_ctrl.legacy_length = *((uint16_t *)&pkt->payload[40+2*count]);
+            }
+            if (seq_buf == 0) {
+                seq_buf = ((uint16_t)pkt->payload[22] | ((uint16_t)pkt->payload[23] << 8)) >> 4;
+                seq_buf = seq_buf - total_num + 1;
+            }
+            seq_buf++;
+        }
+        len = (pkt->rx_ctrl.sig_mode ? pkt->rx_ctrl.HT_length : pkt->rx_ctrl.legacy_length);
+        if (type == WIFI_PKT_MISC) {
+            if (pkt->rx_ctrl.aggregation == 1) {
+                len -= 4;
+            }
+        }
+        if (s_sniffer_cb) {
+            s_sniffer_cb((char *)pkt->payload, len - 4, link_type, with_fcs, info.rssi);
+        }
+        if (total_num > 1) {
+            pkt->payload[22] = (uint8_t)seq_buf;
+            pkt->payload[23] = (pkt->payload[23] & 0xf0) || ((seq_buf >> 8) & 0x0f); 
+        }     
+    }
+#else
+    if (s_sniffer_cb) {
+        len = pkt->rx_ctrl.sig_len;
+    	s_sniffer_cb((char *)pkt->payload, len - 4, link_type, with_fcs, info.rssi);
+    }
+#endif
 }
 
 /**
@@ -271,12 +304,11 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
     }
 
     s_sniffer_cb = cb;
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK( esp_wifi_start() );
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_sniffer_cb));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(1));
     ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
-    ESP_ERROR_CHECK(esp_wifi_start());
     ESP_LOGI(TAG, "wifi running at monitor mode");
 }
 
@@ -287,7 +319,8 @@ void HAL_Awss_Close_Monitor(void)
 {
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(NULL));
-    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    s_sniffer_cb = NULL;
     ESP_LOGI(TAG, "close wifi monitor mode, and set running at station mode");
 }
 
@@ -476,9 +509,12 @@ int HAL_Wifi_Send_80211_Raw_Frame(_IN_ enum HAL_Awss_Frame_Type type,
     if (buffer) {
         return -2;
     }
-
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    int ret = esp_wifi_send_pkt_freedom(buffer, len, true);
+#else
     extern esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
     int ret = esp_wifi_80211_tx(ESP_IF_WIFI_STA, buffer, len, true);
+#endif
     AWSS_ERROR_CHECK(ret != 0, -1, "esp_wifi_80211_tx, ret: 0x%x", ret);
     return 0;
 }
