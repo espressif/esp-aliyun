@@ -11,10 +11,12 @@ EA_VER := $(shell cd ${ESP_ALIYUN_PATH} && git describe --always --tags --dirty)
 CFLAGS += -DIE_VER=\"$(IE_VER)\"
 CFLAGS += -DEA_VER=\"$(EA_VER)\"
 
+COMPONENT_IOTKIT_RELEASE_PATH = iotkit-embedded/output/release
+
 COMPONENT_ADD_INCLUDEDIRS :=	\
-iotkit-embedded/include			\
-iotkit-embedded/include/imports		\
-iotkit-embedded/include/exports		\
+$(COMPONENT_IOTKIT_RELEASE_PATH)/include			\
+$(COMPONENT_IOTKIT_RELEASE_PATH)/include/imports		\
+$(COMPONENT_IOTKIT_RELEASE_PATH)/include/exports		\
 iotkit-embedded/src/services/awss	\
 platform/crypto/include	\
 platform/hal	\
@@ -35,7 +37,7 @@ endif
 
 # link libiot_sdk.a
 LIBS += iot_sdk
-COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/iotkit-embedded/output/release/lib $(addprefix -l,$(LIBS))
+COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/$(COMPONENT_IOTKIT_RELEASE_PATH)/lib $(addprefix -l,$(LIBS))
 
 ifdef CONFIG_TARGET_PLATFORM_ESP8266
 LIBS += openssl
