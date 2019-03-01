@@ -3,6 +3,7 @@
  */
 #include "iot_import.h"
 #include "openssl/ssl.h"
+#include "esp_system.h"
 #include "iotx_hal_internal.h"
 
 static SSL_CTX *ssl_ctx = NULL;
@@ -148,7 +149,15 @@ static int ssl_establish(int sock, SSL **ppssl)
 
     SSL_set_verify(ssl_temp, SSL_VERIFY_NONE, NULL);
 
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    rtc_clk_cpu_freq_set(RTC_CPU_FREQ_160M);
+#endif
+
     err = SSL_connect(ssl_temp);
+
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
+#endif
 
     if (err == -1) {
         hal_err("failed create ssl connection \n");

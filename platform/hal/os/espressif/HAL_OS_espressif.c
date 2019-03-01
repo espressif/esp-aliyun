@@ -761,8 +761,10 @@ int HAL_Timer_Start(void *input_timer, int ms)
         return -1;
     }
     timer_handler *timer = (timer_handler *)input_timer;
-
-    return esp_timer_start_periodic(timer->timer, ms);
+#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+    ms = (ms == 1) ? 10 : ms;
+#endif
+    return esp_timer_start_periodic(timer->timer, ms * 1000);
 }
 
 int HAL_Timer_Stop(void *input_timer)
