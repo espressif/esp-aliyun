@@ -22,6 +22,8 @@
 #include "iot_import.h"
 #include "iotx_hal_internal.h"
 
+#define HAL_TCP_CONNECT_TIMEOUT 10 * 1000000
+
 static uint64_t _linux_get_time_ms(void)
 {
     struct timeval tv = { 0 };
@@ -45,6 +47,28 @@ static uint64_t _linux_time_left(uint64_t t_end, uint64_t t_now)
     }
 
     return t_left;
+}
+
+int HAL_TCP_Timeout(int fd, unsigned long usec)
+{
+    int ret = 0;
+    struct timeval tm;
+    fd_set set;
+    int error = -1, len = sizeof(int);
+
+    tm.tv_sec  = usec / 1000000;
+    tm.tv_usec = usec % 1000000;
+    FD_ZERO(&set);
+    FD_SET(fd, &set);
+
+    if (select(fd + 1, NULL, &set, NULL, &tm) <= 0) {
+        ret = false;
+    } else {
+        getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *) &len);
+        ret = (error == 0) ? true : false;
+    }
+
+    return ret;
 }
 
 uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
@@ -100,16 +124,23 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
     sock_addr.sin_addr.s_addr = ((struct in_addr*)(entry->h_addr))->s_addr;
 
     hal_info("establish tcp connection with server(host=%s port=%u)", host, port);
+    ioctl(client_fd, FIONBIO, &on);
+    if (connect(client_fd, (struct sockaddr*) &sock_addr, sizeof(sock_addr)) == -1) {
+        ret = HAL_TCP_Timeout(client_fd, HAL_TCP_CONNECT_TIMEOUT);
+    } else {
+        ret = true;
+    }
 
-    do {
-        ret = connect(client_fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
-        if (ret) {
-            hal_warning("Connecting to %s:%d failed: %d\n", host, port, ret);
-                vTaskDelay(1000 / portTICK_RATE_MS);
-            } else {
-                hal_info("OK, fd:%d", client_fd);
-        }
-    } while(ret != 0);
+    on = 0;
+    ioctl(client_fd, FIONBIO, &on);
+
+    if (!ret) {
+        hal_info("failed");
+        close(client_fd);
+        client_fd = -1;
+    } else {
+        hal_info("OK");
+    }
 
     return client_fd;
 }
