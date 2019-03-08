@@ -41,6 +41,7 @@
 #include "app_entry.h"
 #include "iot_import_awss.h"
 #include "light_control.h"
+#include "restore.h"
 
 static const char* TAG = "app main";
 #define NVS_KEY_WIFI_CONFIG "wifi_config"
@@ -212,6 +213,8 @@ void app_main()
     ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
     ESP_LOGI(TAG, "esp-aliyun verison: %s", HAL_GetEAVerison());
     ESP_LOGI(TAG, "iotkit-embedded version: %s", HAL_GetIEVerison());
+
+    restore_factory_init();
 
     led_light_start();
 
