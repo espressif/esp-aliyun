@@ -58,9 +58,7 @@ int esp_info_erase(const char *key)
     int ret = ESP_OK;
     nvs_handle handle = 0;
 
-    if (key) {
-        return -1;
-    }
+    AWSS_ERROR_CHECK(!key, -1, "Invalid argument");
 
     ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
     AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
@@ -77,9 +75,7 @@ ssize_t esp_info_save(const char *key, const void *value, size_t length)
     int ret = ESP_OK;
     nvs_handle handle = 0;
 
-    if (key == NULL || value == NULL) {
-        return -1;
-    }
+    AWSS_ERROR_CHECK(!key || !value, -1, "Invalid argument");
     
     ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
     AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
@@ -108,9 +104,7 @@ ssize_t esp_info_load(const char *key, void *value, size_t length)
     int ret = ESP_OK;
     nvs_handle handle = 0;
 
-    if (key == NULL || value == NULL) {
-        return -1;
-    }
+    AWSS_ERROR_CHECK(!key || !value, -1, "Invalid argument");
 
     ret = nvs_open(AWSS_SPACE_NAME, NVS_READWRITE, &handle);
     AWSS_ERROR_CHECK(ret != ESP_OK, -1, "nvs_open ret:%x", ret);
