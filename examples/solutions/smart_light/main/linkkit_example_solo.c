@@ -646,6 +646,7 @@ int linkkit_main(void *paras)
     user_example_ctx->master_devid = IOT_Linkkit_Open(IOTX_LINKKIT_DEV_TYPE_MASTER, &master_meta_info);
     if (user_example_ctx->master_devid < 0) {
         EXAMPLE_TRACE("IOT_Linkkit_Open Failed\n");
+        IOT_Linkkit_Close(user_example_ctx->master_devid);
         return -1;
     }
 
@@ -653,6 +654,7 @@ int linkkit_main(void *paras)
     res = IOT_Linkkit_Connect(user_example_ctx->master_devid);
     if (res < 0) {
         EXAMPLE_TRACE("IOT_Linkkit_Connect Failed\n");
+        IOT_Linkkit_Close(user_example_ctx->master_devid);
         return -1;
     }
 
