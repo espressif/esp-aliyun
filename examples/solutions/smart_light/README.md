@@ -10,19 +10,26 @@
 > 当前 `Smart Light` 不支持 ESP8266 平台, 后续即将支持
 
 ### 解决方案部署
-#### 1.根据 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html) 能运行 [Hello World](https://github.com/espressif/esp-idf/tree/master/examples/get-started/hello_world)
+#### 1.创建ESP32的软件环境,包括使用ESP-IDF进行配置,编译,下载固件到开发板等步骤.根据 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html) 能运行 [Hello World](https://github.com/espressif/esp-idf/tree/master/examples/get-started/hello_world)
 
 #### 2.阿里云平台部署  
 在 [智能生活开放平台](https://living.aliyun.com/#/) 创建产品, 参考[创建产品文档](https://living.aliyun.com/doc#readygo.html).
 > 配置较多, 如果不太懂, 也不用纠结, 后续都可以修改.
+选择"创建项目"--新建产品--输入产品名称,所属分类选择"电工照明/灯"--其他使用默认选项,点击完成即可.
+新建完成后,点击"开发中"产品,完成4步操作.
+1."功能定义",如下图点击"新增",添加RGB调色功能,下一步;
+
+
 
 部署自己的产品, 可参考如下:  
 新增 RGB 调色功能:  
 ![](_static/p1.png)
 
+2."设备调试",选择最后一项,品牌/型号不限的模组,下一步;
 新增测试设备, 此处即可以获得`四元组`, 后续需要.  
 ![](_static/p2.png)
 
+3."人机交互",使能"使用公版APP控制产品",并进入配置界面自定义APP功能和界面.
 配置界面定义好, 即手机 APP 上会显示同样界面; 二维码是贴在产品包装上, 终端客户给设备配网中需扫描此二维码.
 ![](_static/p3.png)
 
@@ -30,6 +37,7 @@
 
 ![](_static/p5.png)
 
+4."完成开发" ,确认完成开发.至此项目定义结束.
 
 #### 3.下载本工程
    ```
