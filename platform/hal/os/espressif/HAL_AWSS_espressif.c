@@ -234,7 +234,7 @@ typedef void (*awss_wifi_mgmt_frame_cb_t)(_IN_ uint8_t *   buffer,
 
 static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
 {
-    int with_fcs  = 0;
+    int with_fcs = 0;
     int link_type = AWSS_LINK_TYPE_NONE;
     uint16_t len = 0;
     wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)recv_buf;
@@ -243,40 +243,36 @@ static void IRAM_ATTR wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_
     if (type != WIFI_PKT_DATA && type != WIFI_PKT_MGMT) {
         return;
     }
+
     info.rssi = pkt->rx_ctrl.rssi;
+
 #ifdef CONFIG_TARGET_PLATFORM_ESP8266
-    uint8_t total_num = 1, count=0;
-    uint16_t seq_buf=0;
+    uint8_t total_num = 1, count;
+    uint16_t seq_buf;
+    len = pkt->rx_ctrl.sig_mode ? pkt->rx_ctrl.HT_length : pkt->rx_ctrl.legacy_length;
 
     if (pkt->rx_ctrl.aggregation) {
         total_num = pkt->rx_ctrl.ampdu_cnt;
     }
-    for (count=0; count < total_num; count++) {
+
+    for (count = 0; count < total_num; count++) {
         if (total_num > 1) {
-            if (pkt->rx_ctrl.sig_mode) {
-                pkt->rx_ctrl.HT_length = *((uint16_t *)&pkt->payload[40+2*count]);
-            } else {
-                pkt->rx_ctrl.legacy_length = *((uint16_t *)&pkt->payload[40+2*count]);
-            }
-            if (seq_buf == 0) {
-                seq_buf = ((uint16_t)pkt->payload[22] | ((uint16_t)pkt->payload[23] << 8)) >> 4;
-                seq_buf = seq_buf - total_num + 1;
-            }
-            seq_buf++;
+            len = *(uint16_t *)(pkt->payload + 40 + 2 * count);
         }
-        len = (pkt->rx_ctrl.sig_mode ? pkt->rx_ctrl.HT_length : pkt->rx_ctrl.legacy_length);
-        if (type == WIFI_PKT_MISC) {
-            if (pkt->rx_ctrl.aggregation == 1) {
-                len -= 4;
-            }
+
+        if (type == WIFI_PKT_MISC && pkt->rx_ctrl.aggregation == 1) {
+            len -= 4;
         }
+
         if (s_sniffer_cb) {
             s_sniffer_cb((char *)pkt->payload, len - 4, link_type, with_fcs, info.rssi);
         }
+
         if (total_num > 1) {
-            pkt->payload[22] = (uint8_t)seq_buf;
-            pkt->payload[23] = (pkt->payload[23] & 0xf0) || ((seq_buf >> 8) & 0x0f); 
-        }     
+            seq_buf = *(uint16_t *)(pkt->payload + 22) >> 4;
+            seq_buf++;
+            *(uint16_t *)(pkt->payload + 22) = (seq_buf << 4) | (*(uint16_t *)(pkt->payload + 22) & 0xF);
+        }
     }
 #else
     if (s_sniffer_cb) {
