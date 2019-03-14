@@ -7,16 +7,31 @@
 - 支持 LED 控制(开关,颜色等)
 - 支持 OTA 升级
 
-> 当前 `Smart Light` 不支持 ESP8266 平台, 后续即将支持
-
 ### 解决方案部署
-#### 1.创建ESP32的软件环境,包括使用ESP-IDF进行配置,编译,下载固件到开发板等步骤.根据 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html) 能运行 [Hello World](https://github.com/espressif/esp-idf/tree/master/examples/get-started/hello_world)
+#### 1.SDK准备
+包括使用ESP-IDF/ESP8266_RTOS_SDK进行配置,编译,下载固件到开发板等步骤.根据 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html) 能运行 [Hello World](https://github.com/espressif/esp-idf/tree/master/examples/get-started/hello_world)
+
+- [esp-aliyun SDK](https://github.com/espressif/esp-aliyun), 通过该 SDK 可实现使用 MQTT 协议，连接 ESP 设备到阿里云。
+- Espressif SDK
+  - ESP32 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
+  - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
+
+> Espressif SDK 下载好后：  
+> ESP-IDF: 请切换到 **release/v3.2 分支**： `git checkout release/v3.2`  
+> ESP8266_RTOS_SDK: 请切换到 **release/v3.1 分支**： `git checkout release/v3.1`
+
+下载esp-aliyun SDK
+   ```
+    git clone https://github.com/espressif/esp-aliyun.git
+    cd esp-aliyun
+    git submodule update --init --recursive
+   ```
 
 #### 2.阿里云平台部署  
 在 [智能生活开放平台](https://living.aliyun.com/#/) 创建产品, 参考[创建产品文档](https://living.aliyun.com/doc#readygo.html).
 > 配置较多, 如果不太懂, 也不用纠结, 后续都可以修改.
 选择"创建项目"--新建产品--输入产品名称,所属分类选择"电工照明/灯"--其他使用默认选项,点击完成即可.
-新建完成后,点击"开发中"产品,完成4步操作.
+新建完成后,点击"开发中"产品,完成如下4步操作.
 1."功能定义",如下图点击"新增",添加RGB调色功能,下一步;
 
 
@@ -39,13 +54,6 @@
 
 4."完成开发" ,确认完成开发.至此项目定义结束.
 
-#### 3.下载本工程
-   ```
-    git clone https://github.com/espressif/esp-aliyun.git
-    cd esp-aliyun
-    git submodule update --init --recursive
-   ```
-
 #### 4.编译 `libiot_sdk.a`  
 `libiot_sdk.a` 是交叉编译 `C-SDK` 到 `IDF` 平台的产物, 详见[SDK overview](https://code.aliyun.com/edward.yangx/public-docs/wikis/user-guide/linkkit/SDK_Overview#%E5%BC%80%E5%8F%91%E5%AF%B9%E6%8E%A5%E7%9A%84HAL%E5%B1%82%E5%AE%9E%E7%8E%B0)
 > 编译前, 请执行下面两步:  
@@ -59,7 +67,7 @@ make reconfig
 make
 ```
 
-编译选项选择 1, 即 `esp32` 平台, make 后即编译好 `libiot_sdk.a`
+编译选项选择 1或2, 即 `esp32`或 `esp8266`平台, make 后即编译好 `libiot_sdk.a`
 
 > 重新编译 `libiot_sdk.a`, 请先执行: `rm output -rf && make clean && make distclean`
 
@@ -111,6 +119,24 @@ APP 点击开始使用, 就可以控制智能灯状态了.
 升级完成后, 会立即重启运行新固件:
 ![](_static/p13.png)
 
+
+#### 12.切换ESP8266/ESP32 平台
+执行: `rm output -rf && make clean && make distclean`,重新编译 libiot_sdk.a
+编译smart light，请先确认导入 ESP8266_RTOS_SDK路径 ，并删除sdkconfig。
+重新编译smart light，擦除芯片后，进行烧录调试。
+以上步骤后，即可切换平台。
+命令参考
+```cd iotkit-embedded
+rm output -rf && make clean && make distclean
+make reconfig
+make
+
+cd examples/solutions/smart_light
+export IDF_PATH=~/workspace/espressif/ESP8266_RTOS_SDK
+rm sdkconfig
+make
+make erase_flash
+make flash monitor```
+
 ### 后续计划
 - 支持天猫精灵控制
-- 支持 ESP8266 平台

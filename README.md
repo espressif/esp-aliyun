@@ -4,10 +4,9 @@
 - [0.介绍](#Introduction)  
 - [1.目的](#aim)  
 - [2.硬件准备](#hardwareprepare)  
-- [3.阿里云平台准备](#aliyunprepare)  
-- [4.环境搭建](#compileprepare)  
-- [5.SDK 准备](#sdkprepare)  
-- [6.编译&烧写&运行](#makeflash)  
+- [3.环境搭建](#compileprepare)  
+- [4.SDK 准备](#sdkprepare)  
+- [5.编译&烧写&运行](#makeflash)  
 
 # <span id = "Introduction">0.介绍</span>
 [乐鑫](https://www.espressif.com/zh-hans)是高集成度芯片的设计专家，专注于设计简单灵活、易于制造和部署的解决方案。乐鑫研发和设计 IoT 业内集成度高、性能稳定、功耗低的无线系统级芯片，乐鑫的模组产品集成了自主研发的系统级芯片，因此具备强大的 Wi-Fi 和蓝牙功能，以及出色的射频性能。
@@ -28,19 +27,15 @@ ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware
 - **USB 线**  
 连接 PC 和 ESP 设备，用来烧写/下载程序，查看 log 等。
 
-# <span id = "aliyunprepare">3.阿里云平台准备</span>
-根据[阿里官方文档](https://github.com/aliyun/iotkit-embedded?spm=5176.doc42648.2.4.e9Zu05)，在阿里云平台创建产品，创建设备，同时自动产生 `product key`, `product secert`, `device name`, `device secret`。  
-`product key`, `product secert`, `device name`, `device secret` 将在 6.1.2 节用到。
-
-# <span id = "compileprepare">4.环境搭建</span>
+# <span id = "compileprepare">3.环境搭建</span>
 **如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)文档等。**  
 
-## 4.1 编译器环境搭建
-- ESP8266 平台: 根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK)中 **Get toolchain**，获取 toolchain
+## 3.1 编译器环境搭建
+- ESP8266 平台: 根据[官方链接](https://github.com/espressif/ESP8266_RTOS_SDK#developing-with-the-esp8266_rtos_sdk)中 **Get toolchain**，获取 toolchain
 - ESP32 平台：根据[官方链接](https://github.com/espressif/esp-idf/blob/master/docs/zh_CN/get-started/linux-setup.rst)中 **工具链的设置**，下载 toolchain
 
 toolchain 设置参考 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html#get-started-setup-toolchain)。  
-## 4.2 烧录工具/下载工具获取
+## 3.2 烧录工具/下载工具获取
 - ESP8266 平台：烧录工具位于 [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK) 下 `./components/esptool_py/esptool/esptool.py`
 - ESP32 平台：烧录工具位于 [esp-idf](https://github.com/espressif/esp-idf) 下 `./components/esptool_py/esptool/esptool.py`
 
@@ -50,90 +45,15 @@ esptool 功能参考:
 $ ./components/esptool_py/esptool/esptool.py --help
 ```
 
-# <span id = "sdkprepare">5.SDK 准备</span> 
+# <span id = "sdkprepare">4.SDK 准备</span> 
 - [esp-aliyun SDK](https://github.com/espressif/esp-aliyun), 通过该 SDK 可实现使用 MQTT 协议，连接 ESP 设备到阿里云。
 - Espressif SDK
   - ESP32 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
   - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
 
 > Espressif SDK 下载好后：  
-> ESP-IDF: 请切换到 release/v3.2 分支： `git checkout release/v3.2`  
-> ESP8266_RTOS_SDK: 请切换到 release/v3.1 分支： `git checkout release/v3.1`
+> ESP-IDF: 请切换到 **release/v3.2 分支**： `git checkout release/v3.2`  
+> ESP8266_RTOS_SDK: 请切换到 **release/v3.1 分支**： `git checkout release/v3.1`
 
-# <span id = "makeflash">6.编译 & 烧写 & 运行</span>
-## 6.1 编译
-
-### 6.1.1 导出编译器
-参考 [工具链的设置](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/linux-setup.html)
-
-### 6.1.2 编译 iotkit-embedded SDK
-1. 拷贝针对 iotkit-embedded 的 patch
-
-为了解决在 MacOS 下的编译问题，修改了部分 iotkit-embedded 中的文件。
-在 esp-aliyun 目录下执行：
-
-```
-cp -r patch/* iotkit-embedded/
-```
-
-2. 编译生成 `libiot_sdk.a`
-
-```
-cd iotkit-embedded
-make reconfig
-# 选择 esp8266 或 esp32 平台
-make
-cd ..
-```
-
-### 6.1.3 编译 demo 示例
-- 进入需要编译的 example, 配置三元组信息等
-
-在 esp-aliyun 目录下执行：
-
-```
-cd examples/solutions/smart_light
-make defconfig
-make menuconfig
-```
-
-![p1](docs/_static/p1.png)
-
-- 配置烧写串口
-- 配置 `WIFI_SSID`, `WIFI_PASSWORD`
-
-2.生成最终 bin
-
-```
-make
-```
-
-## 6.2 擦除 & 编译烧写 & 下载固件 & 查看 log
-将 USB 线连接好 ESP 设备和 PC,确保烧写端口正确。 
-
-### 6.2.1[可选] 擦除 flash
-```
-make erase_flash
-```
-
-### 6.2.2 烧录程序
-```
-make flash
-```
-
-## 6.2.3 运行
-
-```
-make monitor
-```
-
-如将 ESP8266 拨至运行状态，即可看到如下 log：
-log 显示了 ESP8266 基于 TLS 建立了与阿里云的安全连接通路，接着通过 MQTT 协议订阅和发布消息，同时在阿里云控制台上，也能看到 ESP8266 推送的 MQTT 消息。  
-
-![p2](docs/_static/p2.png)
-
-![p3](docs/_static/p3.png)
-
-![p4](docs/_static/p4.png)
-
-> 也可执行 `make flash monitor` 来编译烧写和查看 log。
+# <span id = "makeflash">5.编译 & 烧写 & 运行</span>
+具体编译,烧录,运行请参考[esp-aliyun/examples](https://github.com/espressif/esp-aliyun/tree/master/examples)中的README.
