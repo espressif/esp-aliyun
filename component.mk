@@ -38,8 +38,3 @@ endif
 # link libiot_sdk.a
 LIBS += iot_sdk
 COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/$(COMPONENT_IOTKIT_RELEASE_PATH)/lib $(addprefix -l,$(LIBS))
-
-ifdef CONFIG_TARGET_PLATFORM_ESP8266
-LIBS += openssl
-COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/platform/tls/library $(addprefix -l,$(LIBS))
-endif
