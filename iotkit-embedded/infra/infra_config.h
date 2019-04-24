@@ -45,10 +45,6 @@
 #define HAL_CRYPTO
 #define HAL_UDP
 #define COAP_DTLS_SUPPORT
-#define ATM_ENABLED
-#define AT_TCP_ENABLED
-#define AT_PARSER_ENABLED
-#define AT_HAL_NONE
 #define OTA_ENABLED
 #define COAP_COMM_ENABLED
 #define COAP_PACKET
