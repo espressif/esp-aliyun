@@ -13,5 +13,11 @@ config HAL_SEM_INIT_COUNT
     range 0 10
     help
         The recommended value of count of the semaphore is 0
+config HAL_TLS_HANDSHAKE_TIMEOUT
+    int "TLS Handsake Timeout"
+    default 180
+    range 0 65535
+    help
+        Default TLS handshake timeout to host in seconds
 
 endmenu
