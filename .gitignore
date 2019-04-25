@@ -10,3 +10,6 @@ examples/*/*/build/*
 # config
 sdkconfig
 sdkconfig.old
+
+# VS Code Settings
+.vscode/
