@@ -153,10 +153,10 @@ void *iotx_event_callback(int evt);
     #define container_of aos_container_of
 #endif
 
-#define LIST_HEAD                       AOS_DLIST_HEAD
+#define ALIYUN_LIST_HEAD                       AOS_DLIST_HEAD
 #define LIST_HEAD_INIT                  AOS_DLIST_INIT
 #define INIT_LIST_HEAD                  INIT_AOS_DLIST_HEAD
-#define LIST_INIT                       AOS_DLIST_INIT
+#define ALIYUN_LIST_INIT                       AOS_DLIST_INIT
 
 #define list_head                       dlist_s
 #define list_head_t                     dlist_t
@@ -230,7 +230,8 @@ typedef enum {
     IOTX_IOCTL_SEND_PROP_SET_REPLY,     /* value(int*): 0 - Disable send post set reply by devid; 1 - Enable property set reply by devid */
     IOTX_IOCTL_SET_SUBDEV_SIGN,         /* value(const char*): only for slave device, set signature of subdevice */
     IOTX_IOCTL_GET_SUBDEV_LOGIN,        /* value(int*): 0 - SubDev is logout; 1 - SubDev is login */
-    IOTX_IOCTL_SET_OTA_DEV_ID           /* value(int*):     select the device to do OTA according to devid */
+    IOTX_IOCTL_SET_OTA_DEV_ID,          /* value(int*):     select the device to do OTA according to devid */
+    IOTX_IOCTL_QUERY_DEVID,             /* value(iotx_dev_meta_info_t*): device meta info, only productKey and deviceName is required, ret value is subdev_id or -1 */
 } iotx_ioctl_option_t;
 
 typedef enum {

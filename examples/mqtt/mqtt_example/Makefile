@@ -5,7 +5,7 @@
 PROJECT_NAME := mqtt_example
 
 export ESP_ALIYUN_PATH := $(realpath ../../../)
-export IE_PATH ?= $(ESP_ALIYUN_PATH)/iotkit-embedded
+export IE_PATH ?= $(ESP_ALIYUN_PATH)/eng
 
 EXTRA_COMPONENT_DIRS := $(realpath ../../../)
 

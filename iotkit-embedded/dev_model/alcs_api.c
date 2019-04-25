@@ -12,11 +12,11 @@
 #include "CoAPPlatform.h"
 #include "CoAPObserve.h"
 
-LIST_HEAD(secure_resource_cb_head);
+ALIYUN_LIST_HEAD(secure_resource_cb_head);
 
 static bool is_inited = 0;
 #ifdef SUPPORT_MULTI_DEVICES
-LIST_HEAD(device_list);
+ALIYUN_LIST_HEAD(device_list);
 
 device_auth_list *get_device(CoAPContext *context)
 {

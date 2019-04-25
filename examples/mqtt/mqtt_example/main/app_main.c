@@ -107,7 +107,7 @@ void mqtt_example(void* parameter)
         xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
         const char* argv[] = {"main", "loop"};
-    
+
         linkkit_main(2, argv);
     }
 }

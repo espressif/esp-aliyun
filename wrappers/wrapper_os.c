@@ -24,12 +24,19 @@
 
 #include "wrappers_defs.h"
 
-#include "esp_timer.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
+#include "pthread.h"
+
+#include "esp_log.h"
+#include "esp_timer.h"
+
+
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    static const char *TAG = "wrapper_os";
+#endif
 /**
  * @brief Create a mutex.
  *
@@ -54,7 +61,7 @@ void *HAL_MutexCreate(void)
 void HAL_MutexDestroy(void *mutex)
 {
     if (mutex) {
-         vSemaphoreDelete((SemaphoreHandle_t)mutex);
+        vSemaphoreDelete((SemaphoreHandle_t)mutex);
     }
 }
 
@@ -171,23 +178,43 @@ int HAL_SemaphoreWait(void *sem, uint32_t timeout_ms)
  * @note None.
  */
 int HAL_ThreadCreate(
-            void **thread_handle,
-            void *(*work_routine)(void *),
-            void *arg,
-            hal_os_thread_param_t *hal_os_thread_param,
-            int *stack_used)
+    void **thread_handle,
+    void *(*work_routine)(void *),
+    void *arg,
+    hal_os_thread_param_t *hal_os_thread_param,
+    int *stack_used)
 {
-    return (int)1;
+    int ret = -1;
+
+    if (stack_used) {
+        *stack_used = 0;
+    }
+
+    ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
+
+    return ret;
+
 }
 
 void HAL_ThreadDelete(void *thread_handle)
 {
-    return;
+    if (NULL == thread_handle) {
+#ifdef CONFIG_IDF_TARGET_ESP8266
+        ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
+#else
+        pthread_exit(0);
+#endif
+    } else {
+        /*main thread delete child thread*/
+        pthread_cancel((pthread_t) thread_handle);
+        pthread_join((pthread_t) thread_handle, 0);
+    }
+
 }
 
 extern void HAL_ThreadDetach(void *thread_handle)
 {
-    return;
+    pthread_detach((pthread_t)thread_handle);
 }
 
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)

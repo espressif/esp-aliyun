@@ -1,4 +1,83 @@
-menu "iotkit embedded"
+menu "Aliyun linkkit"
+
+    menu "Aliyun linkkit device key"
+
+        config LINKKIT_FIRMWARE_VERSION
+            string "Device version"
+            default "0.0.1"
+            help
+                aliyun linkkit device version
+
+        config LINKKIT_PRODUCT_KEY
+            string "Product key"
+            default "xxxx"
+            help
+               aliyun linkkit product key.
+
+        config LINKKIT_PRODUCT_SECRET
+            string "Product secret"
+            default "xxxx"
+            help
+               aliyun linkkit product secret.
+
+        config LINKKIT_DEVICE_NAME
+            string "Device name"
+            default "xxxx"
+            help
+                aliyun linkkit device name.
+
+        config LINKKIT_DEVICE_SECRET
+            string "Device secret"
+            default "xxxx"
+            help
+                aliyun linkkit device secret.
+    endmenu
+
+    menu "Aliyun linkkit awss config"
+        config AWSS_ENCRYPT_TYPE
+            int "Get the security level of the `smartconfig` service"
+            range 1 5
+            default 3
+            help
+                Get the security level of the `smartconfig` service
+
+        config AWSS_CONN_ENCRYPT_TYPE
+            int "Get Security level for wifi configuration with connection.Used for AP solution of router and App"
+            range 3 5
+            default 4
+            help
+                Get Security level for wifi configuration with connection.Used for AP solution of router and App
+
+        config AWSS_TIMEOUT_INTERVAL_MS
+            int "Get the timeout period of the distribution service (`AWSS`), in milliseconds"
+            range 0 1800000
+            default 180000
+            help
+                Get the timeout period of the distribution service (`AWSS`), in milliseconds
+
+        config AWSS_CHANNELSCAN_INTERVAL_MS
+            int "Get the length of time scanned on each channel (`channel`), in milliseconds"
+            range 0 1000
+            default 200
+            help
+                Get the length of time scanned on each channel (`channel`), in milliseconds
+    endmenu
+
+    menu "Aliyun linkkit netwoek config"
+        config TCP_ESTABLISH_TIMEOUT_MS
+            int "Device tcp connection timeout wait time milliseconds"
+            range 0 100000
+            default 10000
+            help
+                Device tcp connection timeout wait time milliseconds
+
+        config TLS_ESTABLISH_TIMEOUT_MS
+            int "Device tls connection timeout wait time milliseconds"
+            range 0 100000
+            default 10000
+            help
+                Device tls connection timeout wait time milliseconds
+    endmenu
 
 config HAL_SEM_MAX_COUNT
     int "The maximum count value that can be reached of the semaphore"
@@ -13,5 +92,12 @@ config HAL_SEM_INIT_COUNT
     range 0 10
     help
         The recommended value of count of the semaphore is 0
+
+config HAL_TLS_HANDSHAKE_TIMEOUT
+    int "TLS Handsake Timeout"
+    default 180
+    range 0 65535
+    help
+        Default TLS handshake timeout to host in seconds
 
 endmenu

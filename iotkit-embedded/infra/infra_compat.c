@@ -61,6 +61,10 @@ int IOT_SetupConnInfo(const char *product_key,
     #include "iotx_dm.h"
 #endif
 
+#if defined(DEVICE_MODEL_GATEWAY)
+    extern int iot_linkkit_subdev_query_id(char product_key[IOTX_PRODUCT_KEY_LEN + 1], char device_name[IOTX_DEVICE_NAME_LEN + 1]);
+#endif
+
 int IOT_Ioctl(int option, void *data)
 {
     int                 res = SUCCESS_RETURN;
@@ -169,6 +173,14 @@ int IOT_Ioctl(int option, void *data)
         case IOTX_IOCTL_SEND_PROP_SET_REPLY:
         case IOTX_IOCTL_GET_SUBDEV_LOGIN: {
             res = SUCCESS_RETURN;
+        }
+        break;
+#endif
+#if defined(DEVICE_MODEL_GATEWAY)
+        case IOTX_IOCTL_QUERY_DEVID: {
+            iotx_dev_meta_info_t *dev_info = (iotx_dev_meta_info_t *)data;
+
+            res = iot_linkkit_subdev_query_id(dev_info->product_key, dev_info->device_name);
         }
         break;
 #endif

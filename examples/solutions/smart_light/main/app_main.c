@@ -34,66 +34,71 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "iot_export.h"
-#include "iot_import.h"
-#include "awss.h"
-#include "platform_hal.h"
+#include "infra_compat.h"
+#include "wifi_provision_api.h"
+
 #include "app_entry.h"
-#include "iot_import_awss.h"
-#include "light_control.h"
 #include "restore.h"
+#include "light_control.h"
+
+#include "coap_wrapper.h"
 
 static const char* TAG = "app main";
-#define NVS_KEY_WIFI_CONFIG "wifi_config"
-#define CONNECT_AP_TIMEOUT 60000
+
+
+static EventGroupHandle_t wifi_event_group;
+const int CONNECTED_BIT = BIT0;
 
 static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
-        case SYSTEM_EVENT_STA_START:
-            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
-            break;
+    case SYSTEM_EVENT_STA_CONNECTED:
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_CONNECTED");
+        break;
 
-        case SYSTEM_EVENT_STA_GOT_IP:
-            ESP_LOGI(TAG, "SYSTEM_EVENT_STA_GOT_IP");
-            break;
+    case SYSTEM_EVENT_STA_START:
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_START");
+        break;
 
-        case SYSTEM_EVENT_STA_DISCONNECTED:
-            ESP_LOGW(TAG, "SYSTEM_EVENT_STA_DISCONNECTED");
-            break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_GOT_IP");
+        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        break;
 
-        default:
-            break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        ESP_LOGW(TAG,"SYSTEM_EVENT_STA_DISCONNECTED");
+        esp_wifi_connect();
+        break;
+    default:
+        break;
     }
-
     return ESP_OK;
 }
+
 
 static void initialise_wifi(void)
 {
     tcpip_adapter_init();
-    esp_init_wifi_event_group();
-    ESP_ERROR_CHECK(esp_event_loop_init(NULL, NULL));
+    wifi_event_group = xEventGroupCreate();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
-
-    set_user_wifi_event_cb(event_handler);
 }
 
 void smart_light_example(void* parameter)
 {
     while(1) {
-        // wait for WiFi connected
-        HAL_Wait_Net_Ready(0);
         ESP_LOGI(TAG, "Network is Ready!");
+        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
         app_main_paras_t paras;
         char* argv[] = {"main", "loop"};
         paras.argc = 2;
-        paras.argv = argv; 
+        paras.argv = argv;
         ESP_LOGI(TAG, "entry linkkit main...");
         linkkit_main((void *)&paras);
     }
@@ -208,33 +213,37 @@ void app_main()
         ret = nvs_flash_init();
     }
 
+    HAL_SetProductKey("a10BnLLzGv4");
+    HAL_SetProductSecret("pVfLpS1u3A9JM0go");
+    HAL_SetDeviceName("config");
+    HAL_SetDeviceSecret("dsj3RuY74pgCBJ3zczKz1LaLK7RGApqh");
+
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
-    ESP_LOGI(TAG, "esp-aliyun verison: %s", HAL_GetEAVerison());
-    ESP_LOGI(TAG, "iotkit-embedded version: %s", HAL_GetIEVerison());
-
-    restore_factory_init();
 
     led_light_start();
 
     initialise_wifi();
 
-    wifi_config_t wifi_config;
-    ret = esp_info_load(NVS_KEY_WIFI_CONFIG, &wifi_config, sizeof(wifi_config_t));
-    if(ret < 0) {
-        // make sure user touches device belong to themselves
-        awss_set_config_press(1);
+    IOT_SetLogLevel(IOT_LOG_INFO);
 
-        set_iotx_info();
+    if (restart_count_get() >= LINKKIT_RESTART_COUNT_RESET) {
+        ESP_LOGW(TAG,"Erase information saved in flash");
+        erase_system_count();
+                // make sure user touches device belong to themselves
+        awss_config_press();
+
         // awss callback
         iotx_event_regist_cb(linkkit_event_monitor);
 
         // awss entry
         awss_start();
-    } else {
-        HAL_Awss_Connect_Ap(CONNECT_AP_TIMEOUT, (char*)(wifi_config.sta.ssid), (char*)(wifi_config.sta.password), 0, 0, NULL, 0);
+        awss_check_reset();
     }
+
+    ESP_ERROR_CHECK(esp_wifi_connect());
+
 
     xTaskCreate(smart_light_example, "smart_light_example", 10240, NULL, 5, NULL);
 }

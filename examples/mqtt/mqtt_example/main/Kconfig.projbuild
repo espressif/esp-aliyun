@@ -14,4 +14,37 @@ config WIFI_PASSWORD
 
 		Can be left blank if the network has no security set.
 
+config LINKKIT_KEY_ENABLE_CONFIG
+    bool "Enable configuration linkit key"
+    default n
+        help
+        Whether to enable menuconfig to configure quads
+
+menu "aliyun linkkit key"
+depends on LINKKIT_KEY_ENABLE_CONFIG
+config LINKKIT_PRODUCT_KEY
+    string "product key"
+    default "xxxx"
+    help
+       aliyun linkkit product key.
+
+config LINKKIT_PRODUCT_SECRET
+    string "product secret"
+    default "xxxx"
+    help
+       aliyun linkkit product secret.
+
+config LINKKIT_DEVICE_NAME
+    string "device name"
+    default "xxxx"
+    help
+        aliyun linkkit device name.
+
+config LINKKIT_DEVICE_SECRET
+    string "device secret"
+    default "xxxx"
+    help
+        aliyun linkkit device secret.
+endmenu
+
 endmenu

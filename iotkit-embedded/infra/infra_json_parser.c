@@ -344,7 +344,7 @@ char *LITE_json_value_of(char *key, char *src, ...)
 #if WITH_JSON_KEYS_OF
 static list_head_t *_LITE_json_keys_of(char *src, int src_len, char *prefix, ...)
 {
-    static          LIST_HEAD(keylist);
+    static          ALIYUN_LIST_HEAD(keylist);
     char           *module_name = NULL;
     char           *iter_pre = NULL;
     char           *pos = 0, *key = 0, *val = 0;
@@ -452,7 +452,7 @@ list_head_t *LITE_json_keys_of(char *src, char *prefix, ...)
 #if WITH_JSON_TOKEN_EXT
 static list_head_t *_LITE_json_keys_of_ext(int type, char *src, int src_len, char *prefix, ...)
 {
-    static          LIST_HEAD(keylist);
+    static          ALIYUN_LIST_HEAD(keylist);
     char           *module_name = NULL;
     char           *iter_pre = NULL;
     char           *pos = 0, *key = 0, *val = 0;

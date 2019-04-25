@@ -1,4 +1,3 @@
-
 /*
  * ESPRESSIF MIT License
  *
@@ -25,35 +24,50 @@
 
 #include "infra_types.h"
 
+#include <netinet/in.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include "esp_log.h"
+#include "esp_system.h"
+
+#include "tcpip_adapter.h"
 
 extern int HAL_Fclose(void *stream)
 {
+    printf("here %s\n", __func__);
     return (int)1;
 }
 
 extern void *HAL_Fopen(const char *path, const char *mode)
 {
-    return (void*)1;
+    printf("here %s\n", __func__);
+    return (void *)1;
 }
 
 extern uint32_t HAL_Fread(void *buff, uint32_t size, uint32_t count, void *stream)
 {
+    printf("here %s\n", __func__);
     return (uint32_t)1;
 }
 
 extern int HAL_Fseek(void *stream, long offset, int framewhere)
 {
+    printf("here %s\n", __func__);
     return (int)1;
 }
 
 extern long HAL_Ftell(void *stream)
 {
+    printf("here %s\n", __func__);
     return (long)1;
 }
 
 extern uint32_t HAL_Fwrite(const void *ptr, uint32_t size, uint32_t count, void *stream)
 {
+    printf("here %s\n", __func__);
     return (uint32_t)1;
 }
 
@@ -136,7 +150,7 @@ int HAL_Snprintf(char *str, const int len, const char *fmt, ...)
 
 int HAL_Vsnprintf(char *str, const int len, const char *format, va_list ap)
 {
-    return vsnprintf(str, len, fmt, ap);
+    return vsnprintf(str, len, format, ap);
 }
 
 uint32_t HAL_Random(uint32_t region)
@@ -164,6 +178,7 @@ void HAL_Reboot()
  */
 void HAL_SleepMs(uint32_t ms)
 {
+    //vTaskDelay(ms/portTICK_PERIOD_MS);
     usleep(1000 * ms);
 }
 
@@ -179,7 +194,27 @@ uint64_t HAL_UptimeMs(void)
     return esp_log_timestamp();
 }
 
+/**
+ * @brief check system network is ready(get ip address) or not.
+ *
+ * @param None.
+ * @return 0, net is not ready; 1, net is ready.
+ * @see None.
+ * @note None.
+ */
+
+#ifndef CONFIG_TARGET_PLATFORM_MALIYUN
+
 int HAL_Sys_Net_Is_Ready()
 {
-    return (int)1;
+    tcpip_adapter_ip_info_t local_ip;
+
+    esp_err_t ret = tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &local_ip);
+
+    if ((ESP_OK == ret) && (local_ip.ip.addr != INADDR_ANY)) {
+        return true;
+    }
+
+    return false;
 }
+#endif

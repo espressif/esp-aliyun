@@ -28,10 +28,15 @@
 #ifndef _RESTORE_H_
 #define _RESTORE_H_
 
+
+#define LINKKIT_RESTART_COUNT_RESET     (5)
 /**
  * @brief Initialize the Reset to Factory function
  *
  */
-int restore_factory_init(void);
+int restart_count_get(void);
+
+
+esp_err_t erase_system_count(void);
 
 #endif /* _RESTORE_H_ */

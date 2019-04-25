@@ -28,7 +28,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
 #include "esp8266/gpio_register.h"
 #include "esp8266/pin_mux_register.h"
 #include "driver/pwm.h"
@@ -44,7 +44,7 @@
 // GPIO21 ->  Blue
 #define LEDC_IO_0 (4)
 #define LEDC_IO_1 (5)
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
 #define LEDC_IO_2 (16)
 #else
 #define LEDC_IO_2 (21)
@@ -66,7 +66,7 @@ static bulb_state_t s_bulb_state = {false, 0, 0, 0, 0};
 
 static const char *TAG = "light bulb";
 
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
 #define PWM_PERIOD    (500)
 #define PWM_IO_NUM    3
 
@@ -98,7 +98,7 @@ int16_t phase[PWM_IO_NUM] = {
  */
 void lightbulb_set_aim(uint32_t r, uint32_t g, uint32_t b, uint32_t cw, uint32_t ww, uint32_t period)
 {
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
     printf("lightbulb_set_aim r %d g %d b %d\r\n", r, g, b);
     pwm_stop(0x3);
     pwm_set_duty(LEDC_CHANNEL_0, r);
@@ -221,7 +221,7 @@ static void lightbulb_update()
  */
 void lightbulb_init(void)
 {
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
     pwm_init(PWM_PERIOD, duties, PWM_IO_NUM, pin_num);
     pwm_set_channel_invert(0x1 << 0);
     pwm_set_phases(phase);
@@ -282,7 +282,7 @@ void lightbulb_init(void)
  */
 void lightbulb_deinit(void)
 {
-#ifdef CONFIG_TARGET_PLATFORM_ESP8266
+#ifdef CONFIG_IDF_TARGET_ESP8266
     pwm_stop(0x3);
 #else
     ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, 0);

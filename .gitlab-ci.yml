@@ -12,7 +12,7 @@ variables:
 
 build_esp8266_demo:
   stage: build_esp8266
-  image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new 
+  image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new
   tags:
     - build
   script:
@@ -25,14 +25,8 @@ build_esp8266_demo:
     - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
     - git --version
     - git submodule update --init --recursive
-    - git clone --branch release/v3.1 --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
+    - git clone --branch master --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
     - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
-    - cp -r patch/* iotkit-embedded/
-    - cd iotkit-embedded
-    - make distclean
-    - echo 2 | make reconfig
-    - make -j1
-    - cd ..
     - cd examples/solutions/smart_light
     - make defconfig
     - make
@@ -55,12 +49,6 @@ build_esp32_demo:
     - git clone --branch release/v3.2 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
     - cd esp-idf
     - ./tools/ci/mirror-submodule-update.sh
-    - cd ..
-    - cp -r patch/* iotkit-embedded
-    - cd iotkit-embedded
-    - make distclean
-    - echo 1 | make reconfig
-    - make -j1
     - cd ..
     - cd examples/solutions/smart_light
     - make defconfig

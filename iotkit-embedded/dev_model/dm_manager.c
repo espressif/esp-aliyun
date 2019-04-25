@@ -210,6 +210,25 @@ int dm_mgr_deinit(void)
     return SUCCESS_RETURN;
 }
 
+int dm_mgr_device_query(_IN_ char product_key[IOTX_PRODUCT_KEY_LEN + 1], _IN_ char device_name[IOTX_DEVICE_NAME_LEN + 1], _OU_ int *devid)
+{
+    int res = 0;
+
+    dm_mgr_dev_node_t *node = NULL;
+
+    /* duplicated parameters check is removed */
+
+    res = _dm_mgr_search_dev_by_pkdn(product_key, device_name, &node);
+    if (res == SUCCESS_RETURN) {
+        if (devid) {
+            *devid = node->devid;
+        }
+        return SUCCESS_RETURN;
+    }
+
+    return FAIL_RETURN;
+}
+
 int dm_mgr_device_create(_IN_ int dev_type, _IN_ char product_key[IOTX_PRODUCT_KEY_LEN + 1],
                          _IN_ char device_name[IOTX_DEVICE_NAME_LEN + 1], _IN_ char device_secret[IOTX_DEVICE_SECRET_LEN + 1], _OU_ int *devid)
 {
@@ -1051,9 +1070,9 @@ int dm_mgr_upstream_thing_model_up_raw(_IN_ int devid, _IN_ char *payload, _IN_ 
     dm_log_info("DM Send Raw Data:");
     HEXDUMP_INFO(payload, payload_len);
 
-    res = dm_client_publish(uri, (unsigned char *)payload, strlen(payload), dm_client_thing_model_up_raw_reply);
+    res = dm_client_publish(uri, (unsigned char *)payload, payload_len, dm_client_thing_model_up_raw_reply);
 #ifdef ALCS_ENABLED
-    res1 = dm_server_send(uri, (unsigned char *)payload, strlen(payload), NULL);
+    res1 = dm_server_send(uri, (unsigned char *)payload, payload_len, NULL);
 #endif
 
     if (res < SUCCESS_RETURN || res1 < SUCCESS_RETURN) {

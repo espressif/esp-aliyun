@@ -18,7 +18,9 @@ typedef struct {
     struct list_head   lst;
 } resource_cb_item;
 
-LIST_HEAD(resource_cb_head);
+
+ALIYUN_LIST_HEAD(resource_cb_head);
+
 
 static uint32_t tokenSeed = 0;
 uint32_t getToken()
@@ -192,7 +194,7 @@ typedef struct {
 } ALCSContext;
 
 #ifdef SUPPORT_MULTI_DEVICES
-LIST_HEAD(context_head);
+ALIYUN_LIST_HEAD(context_head);
 
 ALCSContext *get_context(CoAPContext *ctx)
 {
@@ -402,4 +404,3 @@ int alcs_msg_setAddr(CoAPMessage *message, const char *path, const char *query)
 
     return rt;
 }
-
