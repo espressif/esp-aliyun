@@ -25,9 +25,88 @@
 #include "infra_defs.h"
 #include "iot_import_awss.h"
 
+static awss_recv_80211_frame_cb_t s_sniffer_cb;
+
+static void HAL_Awss_Monitor_callback(void *recv_buf, wifi_promiscuous_pkt_type_t type)
+{
+    int with_fcs = 0;
+    int link_type = AWSS_LINK_TYPE_NONE;
+    uint16_t len = 0;
+    wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)recv_buf;
+    int8_t rssi;
+
+    if (type != WIFI_PKT_DATA && type != WIFI_PKT_MGMT) {
+        return;
+    }
+
+    rssi = pkt->rx_ctrl.rssi;
+
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    uint8_t total_num = 1, count;
+    uint16_t seq_buf;
+    len = pkt->rx_ctrl.sig_mode ? pkt->rx_ctrl.HT_length : pkt->rx_ctrl.legacy_length;
+
+    if (pkt->rx_ctrl.aggregation) {
+        total_num = pkt->rx_ctrl.ampdu_cnt;
+    }
+
+    for (count = 0; count < total_num; count++) {
+        if (total_num > 1) {
+            len = *(uint16_t *)(pkt->payload + 40 + 2 * count);
+        }
+
+        if (type == WIFI_PKT_MISC && pkt->rx_ctrl.aggregation == 1) {
+            len -= 4;
+        }
+
+        if (s_sniffer_cb) {
+            s_sniffer_cb((char *)pkt->payload, len - 4, link_type, with_fcs, rssi);
+        }
+
+        if (total_num > 1) {
+            seq_buf = *(uint16_t *)(pkt->payload + 22) >> 4;
+            seq_buf++;
+            *(uint16_t *)(pkt->payload + 22) = (seq_buf << 4) | (*(uint16_t *)(pkt->payload + 22) & 0xF);
+        }
+    }
+#else
+    if (s_sniffer_cb) {
+        len = pkt->rx_ctrl.sig_len;
+        s_sniffer_cb((char *)pkt->payload, len - 4, link_type, with_fcs, rssi);
+    }
+#endif
+}
+
+void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
+{
+    if (!cb) {
+        return;
+    }
+
+    s_sniffer_cb = cb;
+
+    ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(HAL_Awss_Monitor_callback));
+
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    extern void esp_wifi_set_promiscuous_data_len(uint32_t);
+    esp_wifi_set_promiscuous_data_len(512);
+#endif
+
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
+
+    ESP_LOGI(TAG, "Open monitor mode");
+}
+
 void HAL_Awss_Close_Monitor(void)
 {
-    return;
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(false));
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(NULL));
+
+    s_sniffer_cb = NULL;
+
+    ESP_LOGI(TAG, "Close monitor mode");
+
 }
 
 int HAL_Awss_Connect_Ap(
@@ -55,11 +134,6 @@ int HAL_Awss_Get_Timeout_Interval_Ms(void)
 int HAL_Awss_Open_Ap(const char *ssid, const char *passwd, int beacon_interval, int hide)
 {
     return (int)1;
-}
-
-void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
-{
-    return;
 }
 
 void HAL_Awss_Switch_Channel(char primary_channel, char secondary_channel, uint8_t bssid[ETH_ALEN])
