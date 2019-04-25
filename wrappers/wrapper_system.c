@@ -25,6 +25,17 @@
 
 #include "infra_types.h"
 
+#include <netinet/in.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+#include "esp_log.h"
+#include "esp_system.h"
+
+#include "tcpip_adapter.h"
+
 extern int HAL_Fclose(void *stream)
 {
     return (int)1;
@@ -65,7 +76,7 @@ extern uint32_t HAL_Fwrite(const void *ptr, uint32_t size, uint32_t count, void 
  */
 void *HAL_Malloc(uint32_t size)
 {
-    return (void*)1;
+    return malloc(size);;
 }
 
 /**
@@ -78,12 +89,12 @@ void *HAL_Malloc(uint32_t size)
  */
 void HAL_Free(void *ptr)
 {
-    return;
+    free(ptr);
 }
 
 extern void *HAL_Realloc(void *ptr, uint32_t size)
 {
-    return (void*)1;
+    return realloc(ptr, size);
 }
 
 
@@ -99,7 +110,13 @@ extern void *HAL_Realloc(void *ptr, uint32_t size)
  */
 void HAL_Printf(const char *fmt, ...)
 {
-    return;
+    va_list args;
+
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+
+    fflush(stdout);
 }
 
 /**
@@ -116,17 +133,24 @@ void HAL_Printf(const char *fmt, ...)
  */
 int HAL_Snprintf(char *str, const int len, const char *fmt, ...)
 {
-    return (int)1;
+    va_list args;
+    int     rc;
+
+    va_start(args, fmt);
+    rc = vsnprintf(str, len, fmt, args);
+    va_end(args);
+
+    return rc;
 }
 
 int HAL_Vsnprintf(char *str, const int len, const char *format, va_list ap)
 {
-    return (int)1;
+    return vsnprintf(str, len, format, ap);
 }
 
 uint32_t HAL_Random(uint32_t region)
 {
-    return (uint32_t)1;
+    return (region != 0) ? (esp_random() % region) : 0;
 }
 
 void HAL_Srandom(uint32_t seed)
@@ -136,7 +160,7 @@ void HAL_Srandom(uint32_t seed)
 
 void HAL_Reboot()
 {
-    return;
+    esp_restart();
 }
 
 /**
@@ -149,7 +173,7 @@ void HAL_Reboot()
  */
 void HAL_SleepMs(uint32_t ms)
 {
-    return;
+    usleep(1000 * ms);
 }
 
 /**
@@ -161,10 +185,26 @@ void HAL_SleepMs(uint32_t ms)
  */
 uint64_t HAL_UptimeMs(void)
 {
-    return (uint64_t)1;
+    return esp_log_timestamp();
 }
 
+/**
+ * @brief check system network is ready(get ip address) or not.
+ *
+ * @param None.
+ * @return 0, net is not ready; 1, net is ready.
+ * @see None.
+ * @note None.
+ */
 int HAL_Sys_Net_Is_Ready()
 {
-    return (int)1;
+    tcpip_adapter_ip_info_t local_ip;
+
+    esp_err_t ret = tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &local_ip);
+
+    if ((ESP_OK == ret) && (local_ip.ip.addr != INADDR_ANY)) {
+        return 1;
+    }
+
+    return 0;
 }
