@@ -25,6 +25,8 @@
 
 #include "infra_types.h"
 
+#include <stdarg.h>
+
 extern int HAL_Fclose(void *stream)
 {
     return (int)1;
@@ -65,7 +67,7 @@ extern uint32_t HAL_Fwrite(const void *ptr, uint32_t size, uint32_t count, void 
  */
 void *HAL_Malloc(uint32_t size)
 {
-    return (void*)1;
+    return malloc(size);;
 }
 
 /**
@@ -78,12 +80,12 @@ void *HAL_Malloc(uint32_t size)
  */
 void HAL_Free(void *ptr)
 {
-    return;
+    free(ptr);
 }
 
 extern void *HAL_Realloc(void *ptr, uint32_t size)
 {
-    return (void*)1;
+    return realloc(ptr, size);
 }
 
 
@@ -99,7 +101,13 @@ extern void *HAL_Realloc(void *ptr, uint32_t size)
  */
 void HAL_Printf(const char *fmt, ...)
 {
-    return;
+    va_list args;
+
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+
+    fflush(stdout);
 }
 
 /**
@@ -116,17 +124,24 @@ void HAL_Printf(const char *fmt, ...)
  */
 int HAL_Snprintf(char *str, const int len, const char *fmt, ...)
 {
-    return (int)1;
+    va_list args;
+    int     rc;
+
+    va_start(args, fmt);
+    rc = vsnprintf(str, len, fmt, args);
+    va_end(args);
+
+    return rc;
 }
 
 int HAL_Vsnprintf(char *str, const int len, const char *format, va_list ap)
 {
-    return (int)1;
+    return vsnprintf(str, len, fmt, ap);
 }
 
 uint32_t HAL_Random(uint32_t region)
 {
-    return (uint32_t)1;
+    return (region != 0) ? (esp_random() % region) : 0;
 }
 
 void HAL_Srandom(uint32_t seed)
@@ -136,7 +151,7 @@ void HAL_Srandom(uint32_t seed)
 
 void HAL_Reboot()
 {
-    return;
+    esp_restart();
 }
 
 /**
@@ -149,7 +164,7 @@ void HAL_Reboot()
  */
 void HAL_SleepMs(uint32_t ms)
 {
-    return;
+    usleep(1000 * ms);
 }
 
 /**
@@ -161,7 +176,7 @@ void HAL_SleepMs(uint32_t ms)
  */
 uint64_t HAL_UptimeMs(void)
 {
-    return (uint64_t)1;
+    return esp_log_timestamp();
 }
 
 int HAL_Sys_Net_Is_Ready()
