@@ -1,0 +1,17 @@
+menu "iotkit embedded"
+
+config HAL_SEM_MAX_COUNT
+    int "The maximum count value that can be reached of the semaphore"
+    default 255
+    range 0 255
+    help
+        The recommended value of maximum count of the semaphore is 255
+
+config HAL_SEM_INIT_COUNT
+    int "The count value assigned to the semaphore when it is created"
+    default 0
+    range 0 10
+    help
+        The recommended value of count of the semaphore is 0
+
+endmenu

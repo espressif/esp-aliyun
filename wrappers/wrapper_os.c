@@ -24,6 +24,17 @@
 
 #include "wrappers_defs.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+
+#include "pthread.h"
+
+#include "esp_log.h"
+#include "esp_timer.h"
+
+static const char *TAG = "os";
+
 /**
  * @brief Create a mutex.
  *
@@ -34,7 +45,7 @@
  */
 void *HAL_MutexCreate(void)
 {
-    return (void*)1;
+    return (void *)xSemaphoreCreateMutex();
 }
 
 /**
@@ -47,7 +58,9 @@ void *HAL_MutexCreate(void)
  */
 void HAL_MutexDestroy(void *mutex)
 {
-    return;
+    if (mutex) {
+        vSemaphoreDelete((SemaphoreHandle_t)mutex);
+    }
 }
 
 /**
@@ -60,7 +73,9 @@ void HAL_MutexDestroy(void *mutex)
  */
 void HAL_MutexLock(void *mutex)
 {
-    return;
+    if (mutex) {
+        xSemaphoreTake((SemaphoreHandle_t)mutex, portMAX_DELAY);
+    }
 }
 
 /**
@@ -73,7 +88,9 @@ void HAL_MutexLock(void *mutex)
  */
 void HAL_MutexUnlock(void *mutex)
 {
-    return;
+    if (mutex) {
+        xSemaphoreGive((SemaphoreHandle_t)mutex);
+    }
 }
 
 /**
@@ -85,7 +102,7 @@ void HAL_MutexUnlock(void *mutex)
  */
 void *HAL_SemaphoreCreate(void)
 {
-    return (void*)1;
+    return (void *)xSemaphoreCreateCounting(CONFIG_HAL_SEM_MAX_COUNT, CONFIG_HAL_SEM_INIT_COUNT);
 }
 
 /**
@@ -98,7 +115,9 @@ void *HAL_SemaphoreCreate(void)
  */
 void HAL_SemaphoreDestroy(void *sem)
 {
-    return;
+    if (sem) {
+        vSemaphoreDelete((SemaphoreHandle_t)sem);
+    }
 }
 
 /**
@@ -111,7 +130,9 @@ void HAL_SemaphoreDestroy(void *sem)
  */
 void HAL_SemaphorePost(void *sem)
 {
-    return;
+    if (sem) {
+        xSemaphoreGive((SemaphoreHandle_t)sem);
+    }
 }
 
 /**
@@ -130,7 +151,11 @@ void HAL_SemaphorePost(void *sem)
  */
 int HAL_SemaphoreWait(void *sem, uint32_t timeout_ms)
 {
-    return (int)1;
+    if (pdPASS == xSemaphoreTake((SemaphoreHandle_t)sem, timeout_ms)) {
+        return SUCCESS_RETURN;
+    }
+
+    return FAIL_RETURN;
 }
 
 /**
@@ -151,41 +176,86 @@ int HAL_SemaphoreWait(void *sem, uint32_t timeout_ms)
  * @note None.
  */
 int HAL_ThreadCreate(
-            void **thread_handle,
-            void *(*work_routine)(void *),
-            void *arg,
-            hal_os_thread_param_t *hal_os_thread_param,
-            int *stack_used)
+    void **thread_handle,
+    void *(*work_routine)(void *),
+    void *arg,
+    hal_os_thread_param_t *hal_os_thread_param,
+    int *stack_used)
 {
-    return (int)1;
+    int ret = -1;
+
+    if (stack_used) {
+        *stack_used = 0;
+    }
+
+    ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
+
+    return ret;
+
 }
 
 void HAL_ThreadDelete(void *thread_handle)
 {
-    return;
+    if (NULL == thread_handle) {
+#ifdef CONFIG_IDF_TARGET_ESP8266
+        ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
+#else
+        pthread_exit(0);
+#endif
+    } else {
+        /*main thread delete child thread*/
+        pthread_cancel((pthread_t) thread_handle);
+        pthread_join((pthread_t) thread_handle, 0);
+    }
+
 }
 
 extern void HAL_ThreadDetach(void *thread_handle)
 {
-    return;
+    pthread_detach((pthread_t)thread_handle);
 }
 
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
 {
-    return (void*)1;
+    esp_timer_handle_t timer_handle = NULL;
+    esp_timer_create_args_t timer_args = {
+        .callback = func,
+        .arg = user_data,
+        .name = name
+    };
+
+    esp_timer_create(&timer_args, &timer_handle);
+
+    return (void *)timer_handle;
 }
 
 int HAL_Timer_Delete(void *timer)
 {
-    return (int)1;
+    if (ESP_OK == esp_timer_delete((esp_timer_handle_t)timer)) {
+        return SUCCESS_RETURN;
+    }
+
+    return FAIL_RETURN;
 }
 
 int HAL_Timer_Start(void *timer, int ms)
 {
-    return (int)1;
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    ms = (ms == 1) ? 10 : ms;
+#endif
+
+    if (ESP_OK == esp_timer_start_periodic((esp_timer_handle_t)timer, ms * 1000)) {
+        return SUCCESS_RETURN;
+    }
+
+    return FAIL_RETURN;
 }
 
 int HAL_Timer_Stop(void *timer)
 {
-    return (int)1;
+    if (ESP_OK == esp_timer_stop((esp_timer_handle_t)timer)) {
+        return SUCCESS_RETURN;
+    }
+
+    return FAIL_RETURN;
 }
