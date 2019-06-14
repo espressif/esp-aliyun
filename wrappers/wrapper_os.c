@@ -104,7 +104,7 @@ void HAL_MutexUnlock(void *mutex)
  */
 void *HAL_SemaphoreCreate(void)
 {
-    return (void *)xSemaphoreCreateCounting(CONFIG_HAL_SEM_MAX_COUNT, CONFIG_HAL_SEM_INIT_COUNT);
+    return (void *)xSemaphoreCreateCounting(CONFIG_ALIYUN_HAL_SEM_MAX_COUNT, CONFIG_ALIYUN_HAL_SEM_INIT_COUNT);
 }
 
 /**

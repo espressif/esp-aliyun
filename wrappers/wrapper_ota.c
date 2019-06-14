@@ -23,7 +23,7 @@
  */
 
 #include "sdkconfig.h"
-#ifndef CONFIG_TARGET_PLATFORM_MALIYUN
+#ifndef CONFIG_MESH_SUPPORT_ALIYUN_LINKKIT
 
 #include "infra_types.h"
 #include "infra_defs.h"

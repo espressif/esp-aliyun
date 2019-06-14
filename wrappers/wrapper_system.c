@@ -203,7 +203,7 @@ uint64_t HAL_UptimeMs(void)
  * @note None.
  */
 
-#ifndef CONFIG_TARGET_PLATFORM_MALIYUN
+#ifndef CONFIG_MESH_SUPPORT_ALIYUN_LINKKIT
 
 int HAL_Sys_Net_Is_Ready()
 {

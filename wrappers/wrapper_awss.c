@@ -133,7 +133,7 @@ void HAL_Awss_Close_Monitor(void)
 
 }
 
-#ifndef CONFIG_TARGET_PLATFORM_MALIYUN
+#ifndef CONFIG_MESH_SUPPORT_ALIYUN_LINKKIT
 
 int HAL_Awss_Connect_Ap(
     _IN_ uint32_t connection_timeout_ms,
@@ -198,7 +198,7 @@ int HAL_Awss_Connect_Ap(
 
 int HAL_Awss_Get_Timeout_Interval_Ms(void)
 {
-    return CONFIG_AWSS_TIMEOUT_INTERVAL_MS;
+    return CONFIG_ALIYUN_AWSS_TIMEOUT_INTERVAL_MS;
 }
 
 
@@ -210,7 +210,7 @@ int HAL_Awss_Get_Timeout_Interval_Ms(void)
  */
 int HAL_Awss_Get_Channelscan_Interval_Ms(void)
 {
-    return CONFIG_AWSS_CHANNELSCAN_INTERVAL_MS;
+    return CONFIG_ALIYUN_AWSS_CHANNELSCAN_INTERVAL_MS;
 }
 
 

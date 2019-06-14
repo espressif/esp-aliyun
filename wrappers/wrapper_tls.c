@@ -209,7 +209,7 @@ uintptr_t HAL_SSL_Establish(const char *host, uint16_t port, const char *ca_crt,
     esp_tls_cfg_t cfg = {
         .cacert_pem_buf  = (const unsigned char *)ca_crt,
         .cacert_pem_bytes = ca_crt_len,
-        .timeout_ms = CONFIG_TLS_ESTABLISH_TIMEOUT_MS,
+        .timeout_ms = CONFIG_ALIYUN_TLS_ESTABLISH_TIMEOUT_MS,
     };
 
 #ifdef CONFIG_IDF_TARGET_ESP8266

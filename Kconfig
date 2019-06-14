@@ -1,61 +1,55 @@
-menu "Aliyun linkkit"
+menu "Aliyun IOT SDK"
 
-    menu "Aliyun linkkit device key"
+    config ALIYUN_IOT_SDK
+        bool "IDF support aliyun iot sdk"
+        default n
+        help
+            IDF support aliyun iot sdk.
 
-        config LINKKIT_FIRMWARE_VERSION
-            string "Device version"
-            default "0.0.1"
-            help
-                aliyun linkkit device version
+    config ALIYUN_FIRMWARE_VERSION
+        depends on ALIYUN_IOT_SDK
+        string "Device version"
+        default "0.0.1"
+        help
+            aliyun device version
 
-        config LINKKIT_PRODUCT_KEY
-            string "Product key"
+    menu "Aliyun device key"
+    depends on ALIYUN_IOT_SDK
+        config ALIYUN_PRODUCT_KEY
+            string "Aliyun product key"
             default "xxxx"
             help
-               aliyun linkkit product key.
+                Aliyun product key.
 
-        config LINKKIT_PRODUCT_SECRET
-            string "Product secret"
+        config ALIYUN_PRODUCT_SECRET
+            string "Aliyun product secret"
             default "xxxx"
             help
-               aliyun linkkit product secret.
+                Aliyun product secret.
 
-        config LINKKIT_DEVICE_NAME
-            string "Device name"
+        config ALIYUN_DEVICE_NAME
+            string "Aliyun device name"
             default "xxxx"
             help
-                aliyun linkkit device name.
+                Aliyun device name.
 
-        config LINKKIT_DEVICE_SECRET
-            string "Device secret"
+        config ALIYUN_DEVICE_SECRET
+            string "aliyun device secret"
             default "xxxx"
             help
-                aliyun linkkit device secret.
+                Aliyun device secret.
     endmenu
 
-    menu "Aliyun linkkit awss config"
-        config AWSS_ENCRYPT_TYPE
-            int "Get the security level of the `smartconfig` service"
-            range 1 5
-            default 3
-            help
-                Get the security level of the `smartconfig` service
-
-        config AWSS_CONN_ENCRYPT_TYPE
-            int "Get Security level for wifi configuration with connection.Used for AP solution of router and App"
-            range 3 5
-            default 4
-            help
-                Get Security level for wifi configuration with connection.Used for AP solution of router and App
-
-        config AWSS_TIMEOUT_INTERVAL_MS
+    menu "Aliyun awss config"
+    depends on ALIYUN_IOT_SDK
+        config ALIYUN_AWSS_TIMEOUT_INTERVAL_MS
             int "Get the timeout period of the distribution service (`AWSS`), in milliseconds"
             range 0 1800000
             default 180000
             help
                 Get the timeout period of the distribution service (`AWSS`), in milliseconds
 
-        config AWSS_CHANNELSCAN_INTERVAL_MS
+        config ALIYUN_AWSS_CHANNELSCAN_INTERVAL_MS
             int "Get the length of time scanned on each channel (`channel`), in milliseconds"
             range 0 1000
             default 200
@@ -63,41 +57,44 @@ menu "Aliyun linkkit"
                 Get the length of time scanned on each channel (`channel`), in milliseconds
     endmenu
 
-    menu "Aliyun linkkit netwoek config"
-        config TCP_ESTABLISH_TIMEOUT_MS
+    menu "Aliyun netwoek config"
+    depends on ALIYUN_IOT_SDK
+        config ALIYUN_TCP_ESTABLISH_TIMEOUT_MS
             int "Device tcp connection timeout wait time milliseconds"
             range 0 100000
             default 10000
             help
                 Device tcp connection timeout wait time milliseconds
 
-        config TLS_ESTABLISH_TIMEOUT_MS
+        config ALIYUN_TLS_ESTABLISH_TIMEOUT_MS
             int "Device tls connection timeout wait time milliseconds"
             range 0 100000
             default 10000
             help
                 Device tls connection timeout wait time milliseconds
+        config ALIYUN_TLS_HANDSHAKE_TIMEOUT
+            int "Device tls handshake timeout wait time seconds"
+            range 0 65535
+            default 180
+            help
+                Default tls handshake timeout to host in seconds
     endmenu
 
-config HAL_SEM_MAX_COUNT
-    int "The maximum count value that can be reached of the semaphore"
-    default 255
-    range 0 255
-    help
-        The recommended value of maximum count of the semaphore is 255
+    menu "Aliyun hal config"
+    depends on ALIYUN_IOT_SDK
+        config ALIYUN_HAL_SEM_MAX_COUNT
+            int "The maximum count value that can be reached of the semaphore"
+            range 0 255
+            default 255
+            help
+                The recommended value of maximum count of the semaphore is 255
 
-config HAL_SEM_INIT_COUNT
-    int "The count value assigned to the semaphore when it is created"
-    default 0
-    range 0 10
-    help
-        The recommended value of count of the semaphore is 0
-
-config HAL_TLS_HANDSHAKE_TIMEOUT
-    int "TLS Handsake Timeout"
-    default 180
-    range 0 65535
-    help
-        Default TLS handshake timeout to host in seconds
+        config ALIYUN_HAL_SEM_INIT_COUNT
+            int "The count value assigned to the semaphore when it is created"
+            range 0 10
+            default 0
+            help
+                The recommended value of count of the semaphore is 0
+    endmenu
 
 endmenu

@@ -35,7 +35,6 @@
 
 static const char *TAG = "wrapper_product";
 
-
 esp_err_t HAL_product_init()
 {
     static bool init_flag = false;
@@ -53,38 +52,6 @@ esp_err_t HAL_product_init()
         init_flag = true;
     }
     return ESP_OK;
-}
-
-/**
- * @brief   获取设备的固件版本字符串
- *
- * @param   version : 用来存放版本字符串的数组
- * @return  写到version[]数组中的字符长度, 单位是字节(Byte)
- */
-int HAL_GetFirmwareVersion(char *version)
-{
-    if(version == NULL){
-        ESP_LOGE(TAG,"HAL_GetFirmwareVersion version is NULL");
-        return 0;
-    }
-
-    HAL_product_init();
-
-    esp_err_t ret = ESP_OK;
-    nvs_handle handle;
-    size_t read_len = IOTX_FIRMWARE_VERSION_LEN;
-    ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
-    if(ret != ESP_OK){
-        ESP_LOGE(TAG,"HAL_SetDeviceSecret nvs_open error, ret:%d",ret);
-    }else{
-        nvs_get_str(handle, "ProductKey", version, (size_t *)&read_len);
-        nvs_close(handle);
-        strcat(version,"-");
-        #ifdef CONFIG_LINKKIT_FIRMWARE_VERSION
-        strcat(version, CONFIG_LINKKIT_FIRMWARE_VERSION);
-        #endif
-    }
-    return strlen(version);
 }
 
 /**
@@ -231,17 +198,16 @@ int HAL_GetProductKey(char product_key[IOTX_PRODUCT_KEY_LEN])
     }else{
         ret = nvs_get_str(handle, "ProductKey", product_key, (size_t *) &read_len);
         if(ret == ESP_ERR_NVS_NOT_FOUND){
-            ESP_LOGW(TAG,"HAL_GetProductKey nvs_get_str not found");
-            nvs_close(handle);
-            #ifdef CONFIG_LINKKIT_PRODUCT_KEY
+            #ifdef CONFIG_ALIYUN_PRODUCT_KEY
             ESP_LOGW(TAG,"HAL_GetProductKey write menuconfig config linkkit key");
-            HAL_SetProductKey(CONFIG_LINKKIT_PRODUCT_KEY);
-            strncpy(product_key, CONFIG_LINKKIT_PRODUCT_KEY, IOTX_PRODUCT_KEY_LEN);
+            HAL_SetProductKey(CONFIG_ALIYUN_PRODUCT_KEY);
+            strncpy(product_key, CONFIG_ALIYUN_PRODUCT_KEY, IOTX_PRODUCT_KEY_LEN);
             #endif
         }else if(ret != ESP_OK){
             ESP_LOGW(TAG,"HAL_GetProductKey nvs_get_str error, ret:%d",ret);
         }
     }
+    nvs_close(handle);
     ESP_LOGV(TAG,"HAL_GetProductKey :%s",product_key);
     return strlen(product_key);
 }
@@ -269,17 +235,16 @@ int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN])
     }else{
         ret = nvs_get_str(handle, "DeviceName", device_name, (size_t *)&read_len);
         if(ret == ESP_ERR_NVS_NOT_FOUND){
-            ESP_LOGW(TAG,"HAL_GetDeviceName nvs_get_str not found");
-            nvs_close(handle);
-            #ifdef CONFIG_LINKKIT_DEVICE_NAME
+            #ifdef CONFIG_ALIYUN_DEVICE_NAME
             ESP_LOGW(TAG,"HAL_GetDeviceName write menuconfig config linkkit key");
-            HAL_SetDeviceName(CONFIG_LINKKIT_DEVICE_NAME);
-            strncpy(device_name, CONFIG_LINKKIT_DEVICE_NAME, IOTX_DEVICE_NAME_LEN);
+            HAL_SetDeviceName(CONFIG_ALIYUN_DEVICE_NAME);
+            strncpy(device_name, CONFIG_ALIYUN_DEVICE_NAME, IOTX_DEVICE_NAME_LEN);
             #endif
         }else if(ret != ESP_OK){
             ESP_LOGW(TAG,"HAL_GetDeviceName nvs_get_str error, ret:%d",ret);
         }
     }
+    nvs_close(handle);
     ESP_LOGV(TAG,"HAL_GetDeviceName :%s",device_name);
     return strlen(device_name);
 }
@@ -308,17 +273,16 @@ int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN])
     }else{
         ret = nvs_get_str(handle, "DeviceSecret", device_secret, (size_t *)&read_len);;
         if(ret == ESP_ERR_NVS_NOT_FOUND){
-            ESP_LOGW(TAG,"HAL_GetDeviceSecret nvs_get_str not found");
-            nvs_close(handle);
-            #ifdef CONFIG_LINKKIT_DEVICE_SECRET
+            #ifdef CONFIG_ALIYUN_DEVICE_SECRET
             ESP_LOGW(TAG,"HAL_GetDeviceSecret write menuconfig config linkkit key");
-            HAL_SetDeviceSecret(CONFIG_LINKKIT_DEVICE_SECRET);
-            strncpy(device_secret, CONFIG_LINKKIT_DEVICE_SECRET, IOTX_DEVICE_SECRET_LEN);
+            HAL_SetDeviceSecret(CONFIG_ALIYUN_DEVICE_SECRET);
+            strncpy(device_secret, CONFIG_ALIYUN_DEVICE_SECRET, IOTX_DEVICE_SECRET_LEN);
             #endif
         }else if(ret != ESP_OK){
             ESP_LOGW(TAG,"HAL_GetDeviceSecret nvs_get_str error, ret:%d",ret);
         }
     }
+    nvs_close(handle);
     ESP_LOGV(TAG,"HAL_GetDeviceSecret :%s",device_secret);
     return strlen(device_secret);
 }
@@ -347,17 +311,57 @@ int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN])
     }else{
         ret = nvs_get_str(handle, "ProductSecret", product_secret, (size_t *)&read_len);
         if(ret == ESP_ERR_NVS_NOT_FOUND){
-            ESP_LOGW(TAG,"HAL_GetProductSecret nvs_get_str not found");
-            nvs_close(handle);
-            #ifdef CONFIG_LINKKIT_PRODUCT_SECRET
+            #ifdef CONFIG_ALIYUN_PRODUCT_SECRET
             ESP_LOGW(TAG,"HAL_GetProductSecret write menuconfig config linkkit key");
-            HAL_SetProductSecret(CONFIG_LINKKIT_PRODUCT_SECRET);
-            strncpy(product_secret, CONFIG_LINKKIT_PRODUCT_SECRET, IOTX_PRODUCT_SECRET_LEN);
+            HAL_SetProductSecret(CONFIG_ALIYUN_PRODUCT_SECRET);
+            strncpy(product_secret, CONFIG_ALIYUN_PRODUCT_SECRET, IOTX_PRODUCT_SECRET_LEN);
             #endif
         }else if(ret != ESP_OK){
             ESP_LOGW(TAG,"HAL_GetProductSecret nvs_get_str error, ret:%d",ret);
         }
     }
+    nvs_close(handle);
     ESP_LOGV(TAG,"HAL_GetProductSecret :%s",product_secret);
     return strlen(product_secret);
+}
+
+/**
+ * @brief   获取设备的固件版本字符串
+ *
+ * @param   version : 用来存放版本字符串的数组
+ * @return  写到version[]数组中的字符长度, 单位是字节(Byte)
+ */
+int HAL_GetFirmwareVersion(char *version)
+{
+    if(version == NULL){
+        ESP_LOGE(TAG,"HAL_GetFirmwareVersion version is NULL");
+        return 0;
+    }
+
+    HAL_product_init();
+
+    esp_err_t ret = ESP_OK;
+    nvs_handle handle;
+    size_t read_len = IOTX_FIRMWARE_VERSION_LEN;
+
+    ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
+    if(ret != ESP_OK){
+        ESP_LOGE(TAG,"HAL_GetFirmwareVersion nvs_open error, ret:%d",ret);
+    }else{
+        ret = nvs_get_str(handle, "ProductKey", version, (size_t *)&read_len);
+        if(ret == ESP_ERR_NVS_NOT_FOUND){
+            #ifdef CONFIG_ALIYUN_PRODUCT_KEY
+            ESP_LOGW(TAG,"HAL_GetProductKey write menuconfig config linkkit key");
+            HAL_SetProductKey(CONFIG_ALIYUN_PRODUCT_KEY);
+            strncpy(version, CONFIG_ALIYUN_PRODUCT_KEY, strlen(CONFIG_ALIYUN_PRODUCT_KEY));
+            #endif
+        }
+        strcat(version,"-");
+        #ifdef CONFIG_ALIYUN_FIRMWARE_VERSION
+        strcat(version, CONFIG_ALIYUN_FIRMWARE_VERSION);
+        #endif
+    }
+    nvs_close(handle);
+    ESP_LOGV(TAG,"HAL_GetFirmwareVersion :%s",version);
+    return strlen(version);
 }
