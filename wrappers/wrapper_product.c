@@ -22,8 +22,52 @@
  *
  */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "infra_defs.h"
 
+#include "esp_err.h"
+#include "esp_log.h"
+
+#include "nvs.h"
+
+#define NVS_PRODUCT "aliyun-key"
+
+static const char *TAG = "wrapper_product";
+
+static int HAL_GetProductParam(char param_name[IOTX_DEVICE_NAME_LEN + 1], const char *param_name_str)
+{
+    esp_err_t ret;
+    size_t read_len = 0;
+    nvs_handle handle;
+
+    do {
+        if (param_name == NULL) {
+            ESP_LOGE(TAG, "%s param %s NULL", __func__, param_name);
+            break;
+        }
+
+        ret = nvs_open(NVS_PRODUCT, NVS_READONLY, &handle);
+
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "%s nvs_open failed with %x", __func__, ret);
+            break;
+        }
+
+        ret = nvs_get_str(handle, param_name_str, param_name, (size_t *)&read_len);
+
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "%s nvs_get_str get %s failed with %x", __func__, param_name_str, ret);
+        } else {
+            ESP_LOGV(TAG, "%s %s %s", __func__, param_name_str, param_name);
+        }
+
+        nvs_close(handle);
+    } while (0);
+
+    return read_len;
+}
 /**
  * @brief Get device name from user's system persistent storage
  *
@@ -32,7 +76,7 @@
  */
 int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1])
 {
-    return (int)1;
+    return HAL_GetProductParam(device_name, "DeviceName");
 }
 
 /**
@@ -43,18 +87,7 @@ int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1])
  */
 int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN + 1])
 {
-    return (int)1;
-}
-
-/**
- * @brief Get firmware version
- *
- * @param [ou] version: array to store firmware version, max length is IOTX_FIRMWARE_VER_LEN
- * @return the actual length of firmware version
- */
-int HAL_GetFirmwareVersion(char *version)
-{
-    return (int)1;
+    return HAL_GetProductParam(device_secret, "DeviceSecret");
 }
 
 /**
@@ -65,30 +98,75 @@ int HAL_GetFirmwareVersion(char *version)
  */
 int HAL_GetProductKey(char product_key[IOTX_PRODUCT_KEY_LEN + 1])
 {
-    return (int)1;
+    return HAL_GetProductParam(product_key, "ProductKey");
 }
 
 int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN + 1])
 {
-    return (int)1;
+    return HAL_GetProductParam(product_secret, "ProductSecret");
+}
+
+/**
+ * @brief Get firmware version
+ *
+ * @param [ou] version: array to store firmware version, max length is IOTX_FIRMWARE_VER_LEN
+ * @return the actual length of firmware version
+ */
+int HAL_GetFirmwareVersion(char *version)
+{
+    return 0;
+}
+
+static int HAL_SetProductParam(char *param_name, const char *param_name_str)
+{
+    esp_err_t ret;
+    size_t write_len = 0;
+    nvs_handle handle;
+
+    do {
+        if (param_name == NULL) {
+            ESP_LOGE(TAG, "%s param %s NULL", __func__, param_name);
+            break;
+        }
+
+        ret = nvs_open(NVS_PRODUCT, NVS_READWRITE, &handle);
+
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "%s nvs_open failed with %x", __func__, ret);
+            break;
+        }
+
+        ret = nvs_set_str(handle, param_name_str, param_name);
+
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "%s nvs_set_str set %s failed with %x", __func__, param_name_str, ret);
+        } else {
+            write_len = strlen(param_name);
+            ESP_LOGV(TAG, "%s %s %s", __func__, param_name_str, param_name);
+        }
+
+        nvs_close(handle);
+    } while (0);
+
+    return write_len;
 }
 
 int HAL_SetDeviceName(char *device_name)
 {
-    return (int)1;
+    return HAL_SetProductParam(device_name, "DeviceName");
 }
 
 int HAL_SetDeviceSecret(char *device_secret)
 {
-    return (int)1;
+    return HAL_SetProductParam(device_secret, "DeviceSecret");
 }
 
 int HAL_SetProductKey(char *product_key)
 {
-    return (int)1;
+    return HAL_SetProductParam(product_key, "ProductKey");
 }
 
 int HAL_SetProductSecret(char *product_secret)
 {
-    return (int)1;
+    return HAL_SetProductParam(product_secret, "ProductSecret");
 }
