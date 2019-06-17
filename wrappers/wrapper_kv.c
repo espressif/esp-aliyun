@@ -22,17 +22,99 @@
  *
  */
 
+#include <stdio.h>
+
+#include "nvs.h"
+#include "esp_log.h"
+
+#define NVS_KV "iotkit-kv"
+
+static const char *TAG = "wrapper_kv";
+
 int HAL_Kv_Del(const char *key)
 {
-    return (int)1;
+    nvs_handle handle;
+    esp_err_t ret;
+
+    if (key == NULL) {
+        ESP_LOGE(TAG, "HAL_Kv_Del Null key");
+        return ESP_FAIL;
+    }
+
+    ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        return ESP_FAIL;
+    }
+
+    ret = nvs_erase_key(handle, key);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key, ret);
+    } else {
+        nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+
+    return ret;
 }
 
 int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
 {
-    return (int)1;
+    nvs_handle handle;
+    esp_err_t ret;
+
+    if (key == NULL || val == NULL || buffer_len == NULL) {
+        ESP_LOGE(TAG, "HAL_Kv_Get Null params");
+        return ESP_FAIL;
+    }
+
+    ret = nvs_open(NVS_KV, NVS_READONLY, &handle);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        return ESP_FAIL;
+    }
+
+    ret = nvs_get_blob(handle, key, val, (size_t *) buffer_len);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs get blob %s failed with %x", key, ret);
+    }
+
+    nvs_close(handle);
+
+    return ret;
 }
 
 int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
 {
-    return (int)1;
+    nvs_handle handle;
+    esp_err_t ret;
+
+    if (key == NULL || val == NULL || len <= 0) {
+        ESP_LOGE(TAG, "HAL_Kv_Set NULL params");
+        return ESP_FAIL;
+    }
+
+    ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        return ESP_FAIL;
+    }
+
+    ret = nvs_set_blob(handle, key, val, len);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key, ret);
+    } else {
+        nvs_commit(handle);
+    }
+
+    nvs_close(handle);
+
+    return ret;
 }
