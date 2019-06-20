@@ -28,7 +28,7 @@ typedef struct scan_list {
     void *data;
 } scan_list_t;
 
-static LIST_HEAD(g_scan_list);
+static ALIYUN_LIST_HEAD(g_scan_list);
 
 int wifimgr_scan_init(void)
 {
