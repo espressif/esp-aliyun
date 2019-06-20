@@ -44,7 +44,7 @@ int HAL_Kv_Del(const char *key)
     ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        ESP_LOGE(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
 
@@ -74,7 +74,7 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
     ret = nvs_open(NVS_KV, NVS_READONLY, &handle);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        ESP_LOGE(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
 
@@ -102,7 +102,7 @@ int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
     ret = nvs_open(NVS_KV, NVS_READWRITE, &handle);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs open % failed with %x", NVS_KV, ret);
+        ESP_LOGE(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
 

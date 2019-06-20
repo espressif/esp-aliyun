@@ -37,6 +37,9 @@ static uint8_t s_esp_oui[3] = { 0 };
 
 typedef void (*wifi_sta_rx_probe_req_t)(const uint8_t *frame, int len, int rssi);
 extern esp_err_t esp_wifi_set_sta_rx_probe_req(wifi_sta_rx_probe_req_t cb);
+extern void *HAL_Malloc(uint32_t size);
+extern void *HAL_Realloc(void *ptr, uint32_t size);
+extern void HAL_Free(void *ptr);
 
 static void wifi_sta_rx_probe_req(const uint8_t *frame, int len, int rssi)
 {
