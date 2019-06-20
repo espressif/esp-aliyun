@@ -285,7 +285,7 @@ int HAL_UDP_readTimeout(intptr_t p_socket,
     }
 
     if (ret < 0) {
-        if (hal_net_errno(sockfd) == EINTR) {
+        if (hal_net_errno(socket_id) == EINTR) {
             return -3;    /* want read */
         }
 
