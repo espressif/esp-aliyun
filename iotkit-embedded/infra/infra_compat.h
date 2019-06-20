@@ -153,10 +153,10 @@ void *iotx_event_callback(int evt);
     #define container_of aos_container_of
 #endif
 
-#define LIST_HEAD                       AOS_DLIST_HEAD
+#define ALIYUN_LIST_HEAD                       AOS_DLIST_HEAD
 #define LIST_HEAD_INIT                  AOS_DLIST_INIT
 #define INIT_LIST_HEAD                  INIT_AOS_DLIST_HEAD
-#define LIST_INIT                       AOS_DLIST_INIT
+#define ALIYUN_LIST_INIT                       AOS_DLIST_INIT
 
 #define list_head                       dlist_s
 #define list_head_t                     dlist_t
