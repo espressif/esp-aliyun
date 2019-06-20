@@ -36,7 +36,7 @@
 
 static const char *TAG = "wrapper_product";
 
-static int HAL_GetProductParam(char param_name[IOTX_DEVICE_NAME_LEN + 1], const char *param_name_str)
+static int HAL_GetProductParam(char *param_name, const char *param_name_str)
 {
     esp_err_t ret;
     size_t read_len = 0;
@@ -52,6 +52,12 @@ static int HAL_GetProductParam(char param_name[IOTX_DEVICE_NAME_LEN + 1], const 
 
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "%s nvs_open failed with %x", __func__, ret);
+            break;
+        }
+
+        ret = nvs_get_str(handle, param_name_str, NULL, (size_t *)&read_len);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "%s nvs_get_str get %s failed with %x", __func__, param_name_str, ret);
             break;
         }
 
