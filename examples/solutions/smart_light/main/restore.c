@@ -31,69 +31,61 @@
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
-#include "platform_hal.h"
+#include "dm_wrapper.h"
 
 #define FACTORY_MIN_TIMEOUT        (6 * 1000)
 #define FACTORY_TOTAL_COUNT        (5)
 #define RESTORE_FACTORY_KEY        "factory_key"
-#define RESTORE_WIFI_CONFIG_KEY    "wifi_config"
+#define RESTORE_WIFI_CONFIG_KEY    "ap_config"
 
 static const char *TAG = "factory";
 
-ssize_t esp_info_save(const char *key, const void *value, size_t length);
-int esp_info_erase(const char *key);
+#define LINKKIT_RESTART_TIMEOUT_MS      (5000)
+#define LINKKIT_STORE_RESTART_COUNT_KEY "restart_count"
 
-static esp_err_t restore_factory_handle()
+static void restart_count_erase_timercb(void *timer)
 {
-    esp_err_t ret = ESP_OK;
-    int reboot_num = 0;
-
-    /**< If the device restarts within the instruction time, the event_mdoe value will be incremented by one */
-    ret = esp_info_load(RESTORE_FACTORY_KEY, &reboot_num, sizeof(int));
-
-    reboot_num ++;
-    ret = esp_info_save(RESTORE_FACTORY_KEY, &reboot_num, sizeof(int));
-
-    if (reboot_num >= FACTORY_TOTAL_COUNT) {
-        ESP_LOGI(TAG, "Handle Factory %d", reboot_num);
-        esp_info_erase(RESTORE_FACTORY_KEY);
-        esp_info_erase(RESTORE_WIFI_CONFIG_KEY);
-        esp_restart();
-    } else {
-        ESP_LOGI(TAG, "Don't Factory");
+    if (!xTimerStop(timer, portMAX_DELAY)) {
+        ESP_LOGE(TAG,"xTimerStop timer: %p", timer);
     }
 
-    return ret;
-}
-
-static void restore_factory_clear(void *timer)
-{
-    if (!xTimerStop(timer, 0)) {
-        ESP_LOGE(TAG, "xTimerStop timer %p", timer);
+    if (!xTimerDelete(timer, portMAX_DELAY)) {
+        ESP_LOGE(TAG,"xTimerDelete timer: %p", timer);
     }
 
-    if (!xTimerDelete(timer, 0)) {
-        ESP_LOGE(TAG, "xTimerDelete timer %p", timer);
+    HAL_Kv_Del(LINKKIT_STORE_RESTART_COUNT_KEY);
+    ESP_LOGW(TAG,"Erase restart count");
+}
+
+int restart_count_get(void)
+{
+    esp_err_t ret             = ESP_OK;
+    TimerHandle_t timer       = NULL;
+    uint32_t restart_count    = 0;
+    int count_len        = sizeof(uint32_t);
+
+    HAL_Kv_Get(LINKKIT_STORE_RESTART_COUNT_KEY, &restart_count, &count_len);
+
+    /**< If the device restarts within the instruction time,
+         the event_mdoe value will be incremented by one */
+    restart_count++;
+    ret = HAL_Kv_Set(LINKKIT_STORE_RESTART_COUNT_KEY, &restart_count, sizeof(uint32_t),0);
+    if(ret != ESP_OK){
+        ESP_LOGE(TAG,"Save the number of restarts within the set time");
     }
 
-    /* erase reboot number record*/
-    esp_info_erase(RESTORE_FACTORY_KEY);
+    timer = xTimerCreate("restart_count_erase", LINKKIT_RESTART_TIMEOUT_MS / portTICK_RATE_MS,
+                         false, NULL, restart_count_erase_timercb);
+    if(timer == NULL){
+        ESP_LOGE(TAG,"xTaskCreate ERROR, timer: %p", timer);
+    }
 
-    ESP_LOGI(TAG, "Timeout, must be clear");
+    xTimerStart(timer, 0);
+
+    return restart_count;
 }
 
-int restore_factory_init(void)
+esp_err_t erase_system_count(void)
 {
-    TimerHandle_t timer = NULL;
-    esp_err_t ret      = ESP_OK;
-
-    timer = xTimerCreate("restore_factory", FACTORY_MIN_TIMEOUT / portTICK_RATE_MS,
-                         false, NULL, restore_factory_clear);
-
-    xTimerStart(timer, portMAX_DELAY);
-
-    ret = restore_factory_handle();
-
-    return ret;
+    return HAL_Kv_Del(LINKKIT_STORE_RESTART_COUNT_KEY);
 }
-
