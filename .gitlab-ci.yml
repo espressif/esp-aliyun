@@ -51,7 +51,7 @@ build_esp32_demo:
     - ./tools/ci/mirror-submodule-update.sh
     - cd ..
     - cd examples/solutions/smart_light
-    - make defconfig
+    - make chip=esp32 defconfig
     - make
 
 push_to_github:
