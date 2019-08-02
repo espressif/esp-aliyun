@@ -385,6 +385,7 @@ int linkkit_main(void *paras)
     res = IOT_Linkkit_Connect(g_user_example_ctx.master_devid);
     if (res < 0) {
         EXAMPLE_TRACE("IOT_Linkkit_Connect Failed\n");
+        IOT_Linkkit_Close(g_user_example_ctx.master_devid);
         return -1;
     }
 
