@@ -30,11 +30,33 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
+#include "nvs_flash.h"
 #include "nvs.h"
 
+#define MFG_PARTITION_NAME "fctry"
 #define NVS_PRODUCT "aliyun-key"
 
 static const char *TAG = "wrapper_product";
+
+static bool s_part_init_flag;
+
+static esp_err_t HAL_ProductParam_init(void)
+{
+    esp_err_t ret = ESP_OK;
+
+    do {
+        if (s_part_init_flag == false) {
+            if ((ret = nvs_flash_init_partition(MFG_PARTITION_NAME)) != ESP_OK) {
+                ESP_LOGE(TAG, "NVS Flash init %s failed, Please check that you have flashed fctry partition!!!", MFG_PARTITION_NAME);
+                break;
+            }
+
+            s_part_init_flag = true;
+        }
+    } while (0);
+
+    return ret;
+}
 
 static int HAL_GetProductParam(char *param_name, const char *param_name_str)
 {
@@ -43,12 +65,16 @@ static int HAL_GetProductParam(char *param_name, const char *param_name_str)
     nvs_handle handle;
 
     do {
+        if (HAL_ProductParam_init() != ESP_OK) {
+            break;
+        }
+
         if (param_name == NULL) {
             ESP_LOGE(TAG, "%s param %s NULL", __func__, param_name);
             break;
         }
 
-        ret = nvs_open(NVS_PRODUCT, NVS_READONLY, &handle);
+        ret = nvs_open_from_partition(MFG_PARTITION_NAME, NVS_PRODUCT, NVS_READONLY, &handle);
 
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "%s nvs_open failed with %x", __func__, ret);
@@ -56,6 +82,7 @@ static int HAL_GetProductParam(char *param_name, const char *param_name_str)
         }
 
         ret = nvs_get_str(handle, param_name_str, NULL, (size_t *)&read_len);
+
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "%s nvs_get_str get %s failed with %x", __func__, param_name_str, ret);
             break;
@@ -130,12 +157,16 @@ static int HAL_SetProductParam(char *param_name, const char *param_name_str)
     nvs_handle handle;
 
     do {
+        if (HAL_ProductParam_init() != ESP_OK) {
+            break;
+        }
+
         if (param_name == NULL) {
             ESP_LOGE(TAG, "%s param %s NULL", __func__, param_name);
             break;
         }
 
-        ret = nvs_open(NVS_PRODUCT, NVS_READWRITE, &handle);
+        ret = nvs_open_from_partition(MFG_PARTITION_NAME, NVS_PRODUCT, NVS_READWRITE, &handle);
 
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "%s nvs_open failed with %x", __func__, ret);

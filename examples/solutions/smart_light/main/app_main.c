@@ -213,11 +213,6 @@ void app_main()
         ret = nvs_flash_init();
     }
 
-    HAL_SetProductKey("a10BnLLzGv4");
-    HAL_SetProductSecret("pVfLpS1u3A9JM0go");
-    HAL_SetDeviceName("config");
-    HAL_SetDeviceSecret("dsj3RuY74pgCBJ3zczKz1LaLK7RGApqh");
-
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
