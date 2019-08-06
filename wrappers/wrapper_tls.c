@@ -204,6 +204,11 @@ int HAL_SSL_Read(uintptr_t handle, char *buf, int len, int timeout_ms)
     int poll, ret;
     struct esp_tls *tls = (struct esp_tls *)handle;
 
+    if (tls == NULL) {
+        ESP_LOGE(TAG, "HAL_SSL_Read, handle == NULL");
+        return NULL_VALUE_ERROR;
+    }
+
     if (esp_tls_get_bytes_avail(tls) <= 0) {
         if ((poll = ssl_poll_read(tls, timeout_ms)) <= 0) {
             return poll;
@@ -233,6 +238,11 @@ int HAL_SSL_Write(uintptr_t handle, const char *buf, int len, int timeout_ms)
 {
     int poll, ret;
     struct esp_tls *tls = (struct esp_tls *)handle;
+
+    if (tls == NULL) {
+        ESP_LOGE(TAG, "HAL_SSL_Write, handle == NULL");
+        return NULL_VALUE_ERROR;
+    }
 
     if ((poll = ssl_poll_write(tls, timeout_ms)) <= 0) {
         ESP_LOGW(TAG, "Poll timeout or error, errno=%s, fd=%d, timeout_ms=%d", strerror(errno), tls->sockfd, timeout_ms);
