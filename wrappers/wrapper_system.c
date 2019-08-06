@@ -76,7 +76,7 @@ extern uint32_t HAL_Fwrite(const void *ptr, uint32_t size, uint32_t count, void 
  */
 void *HAL_Malloc(uint32_t size)
 {
-    return malloc(size);;
+    return calloc(1,size);
 }
 
 /**
