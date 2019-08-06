@@ -183,12 +183,21 @@ int HAL_ThreadCreate(
     int *stack_used)
 {
     int ret = -1;
+    pthread_attr_t attr = {0};
 
-    if (stack_used) {
-        *stack_used = 0;
+    if (!thread_handle || !work_routine || 
+        !hal_os_thread_param || !stack_used) {
+        return NULL_VALUE_ERROR;
     }
 
-    ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
+    *stack_used = 0;
+
+    if (hal_os_thread_param->stack_size == 0) {
+        ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
+    } else {
+        attr.stacksize = hal_os_thread_param->stack_size;
+        ret = pthread_create((pthread_t *)thread_handle, &attr, work_routine, arg);
+    }
 
     return ret;
 
@@ -210,7 +219,7 @@ void HAL_ThreadDelete(void *thread_handle)
 
 }
 
-extern void HAL_ThreadDetach(void *thread_handle)
+void HAL_ThreadDetach(void *thread_handle)
 {
     pthread_detach((pthread_t)thread_handle);
 }
