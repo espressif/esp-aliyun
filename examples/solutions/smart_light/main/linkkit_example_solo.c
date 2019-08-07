@@ -27,7 +27,7 @@ int HAL_Snprintf(char *str, const int len, const char *fmt, ...);
     #include "at_api.h"
 #endif
 
-#include "light_control.h"
+#include "lightbulb.h"
 #include "esp_log.h"
 
 static const char* TAG = "linkkit_example_solo";
