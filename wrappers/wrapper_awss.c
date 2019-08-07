@@ -30,6 +30,7 @@
 
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "wrappers_extra.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -99,6 +100,8 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
 
     s_sniffer_cb = cb;
 
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(HAL_Awss_Monitor_callback));
 
@@ -160,23 +163,9 @@ int HAL_Awss_Connect_Ap(
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_connect());
+    HAL_Wifi_Save_Network((uint8_t *)ssid, HAL_MAX_SSID_LEN, (uint8_t *)passwd, HAL_MAX_PASSWD_LEN);
 
-    tcpip_adapter_ip_info_t local_ip;
-
-    while (connect_ms < connection_timeout_ms) {
-        esp_err_t ret = tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &local_ip);
-
-        if ((ESP_OK == ret) && (local_ip.ip.addr != INADDR_ANY)) {
-            ESP_LOGI(TAG, "AP connected");
-            return SUCCESS_RETURN;
-        } else {
-            ESP_LOGI(TAG, "Connecting AP");
-            vTaskDelay(500 / portTICK_PERIOD_MS);
-            connect_ms += 500;
-        }
-    }
-
-    return FAIL_RETURN;
+    return HAL_Wifi_Got_IP(connection_timeout_ms);
 }
 
 int HAL_Awss_Get_Channelscan_Interval_Ms(void)
