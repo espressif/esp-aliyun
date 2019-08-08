@@ -21,22 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#ifndef _FACTORY_HANDLE_H_
+#define _FACTORY_HANDLE_H_
 
-/* Reset to Factory
-*/
+int factory_init(void);
 
-#ifndef _RESTORE_H_
-#define _RESTORE_H_
-
-
-#define LINKKIT_RESTART_COUNT_RESET     (5)
-/**
- * @brief Initialize the Reset to Factory function
- *
- */
-int restart_count_get(void);
-
-
-esp_err_t erase_system_count(void);
-
-#endif /* _RESTORE_H_ */
+#endif /* _FACTORY_HANDLE_H_ */

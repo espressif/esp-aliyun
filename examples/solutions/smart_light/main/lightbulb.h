@@ -1,9 +1,9 @@
 /*
- * ESPRSSIF MIT License
+ * ESPRESSIF MIT License
  *
- * Copyright (c) 2018 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
+ * Copyright (c) 2019 <ESPRESSIF SYSTEMS (SHANGHAI) PTE LTD>
  *
- * Permission is hereby granted for use on ESPRESSIF SYSTEMS ESP32 only, in which case,
+ * Permission is hereby granted for use on all ESPRESSIF SYSTEMS products, in which case,
  * it is free of charge, to any person obtaining a copy of this software and associated
  * documentation files (the "Software"), to deal in the Software without restriction, including
  * without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
@@ -21,8 +21,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#ifndef LIGHT_CONTROL_H_
-#define LIGHT_CONTROL_H_
+#ifndef LIGHTBULB_H_
+#define LIGHTBULB_H_
 #include <stdbool.h>
 
 #define PWM_TARGET_DUTY 8192
