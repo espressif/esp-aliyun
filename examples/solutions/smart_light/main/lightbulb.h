@@ -21,33 +21,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#ifndef LIGHTBULB_H_
-#define LIGHTBULB_H_
+#ifndef _LIGHTBULB_H_
+#define _LIGHTBULB_H_
+
 #include <stdbool.h>
-
-#define PWM_TARGET_DUTY 8192
-
-typedef enum {
-    BULB_STATE_OFF = 0,
-    BULB_STATE_RED = 1,
-    BULB_STATE_GREEN = 2,
-    BULB_STATE_BLUE = 3,
-    BULB_STATE_OTHERS = 4
-} bulb_color_t;
-
-typedef struct bulb_state {
-    bool set_on;
-    double hue_value;
-    double saturation_value;
-    int brightness_value;
-    int flash_interval;
-} bulb_state_t;
-
-typedef struct {
-    uint8_t r;  // 0-100 %
-    uint8_t g;  // 0-100 %
-    uint8_t b;  // 0-100 %
-} rgb_t;
 
 /**
  * @brief initialize the lightbulb lowlevel module
@@ -70,94 +47,43 @@ void lightbulb_deinit(void);
 /**
  * @brief turn on/off the lowlevel lightbulb
  *
- * @param p signal point, the data is type of "bool"
+ * @param value The "On" value
  *
  * @return none
  */
-void lightbulb_set_on(void *p);
+int lightbulb_set_on(bool value);
 
 /**
  * @brief set the saturation of the lowlevel lightbulb
  *
- * @param p signal point, the data is type of "int"
+ * @param value The Saturation value
  *
- * @return
+ * @return 
  *     - 0 : OK
  *     - others : fail
  */
-void lightbulb_set_saturation(void *p);
+int lightbulb_set_saturation(float value);
 
 /**
  * @brief set the hue of the lowlevel lightbulb
  *
- * @param p signal point, the data is type of "double"
+ * @param value The Hue value
  *
- * @return
+ * @return 
  *     - 0 : OK
  *     - others : fail
  */
-void lightbulb_set_hue(void *p);
+int lightbulb_set_hue(float value);
 
 /**
  * @brief set the brightness of the lowlevel lightbulb
  *
- * @param p signal point, the data is type of "double"
+ * @param value The Brightness value
  *
- * @return
+ * @return 
  *     - 0 : OK
  *     - others : fail
  */
-void lightbulb_set_brightness(void *p);
+int lightbulb_set_brightness(int value);
 
-/**
- * @brief  notify light state to set, time interval to set
- *
- * @param[in] state state to set
- * @param[in] time interval to set
- *
- * @return  noreturn
- *
- * */
-void notify_lightbulb_state(bulb_color_t in_color, int flash_interval);
-
-/**
- * @brief get current light state
- *
- * @param[in]  in parameter input
- *
- * @return  struct bulb_state_t which including light state
- * */
-bulb_state_t *get_current_bulb_state();
-
-/**
- * @brief set current light state
- *
- * @param[in]  input_save_bulb_state: struct bulb_state_t which including light state
- *
- * @return  noreturn
- * */
-void set_current_bulb_state(bulb_state_t input_save_bulb_state);
-
-/**
- * @brief  set light state off
- *
- * @param[in]  no parameter input
- *
- * @return  noreturn
- *
- * */
-void lightbulb_set_off();
-
-// main light state damon entry
-void led_light_start();
-
-// for system state
-void notify_lightbulb_state(bulb_color_t state, int flash_interval);
-
-// for hsv
-bool lightbulb_set_aim_hsv(uint16_t h, uint16_t s, uint16_t v);
-
-void lightbulb_set_aim(uint32_t r, uint32_t g, uint32_t b, uint32_t cw, uint32_t ww, uint32_t period);
-
-#endif /* LIGHTBULB_H_ */
-
+#endif /* _LIGHTBULB_H_ */
