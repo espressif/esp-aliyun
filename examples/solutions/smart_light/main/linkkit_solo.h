@@ -21,21 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#ifndef __APP_ENTRY_H__
-#define __APP_ENTRY_H__
+#ifndef _LINKKIT_SOLO_H__
+#define _LINKKIT_SOLO_H__
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-
-typedef struct {
-    int argc;
-    char **argv;
-}app_main_paras_t;
-
-int linkkit_main(void *paras);
-
-void set_iotx_info();
+int linkkit_lightbulb_handle(void);
 
 #endif
