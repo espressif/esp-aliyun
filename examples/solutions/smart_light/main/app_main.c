@@ -34,7 +34,7 @@
 #include "infra_compat.h"
 #include "wifi_provision_api.h"
 
-#include "app_entry.h"
+#include "linkkit_solo.h"
 #include "factory_handle.h"
 #include "lightbulb.h"
 #include "wrappers_extra.h"
@@ -145,9 +145,8 @@ static void smart_light_example(void* parameter)
 
     HAL_Kv_Init();
     HAL_Wifi_Init();
+    lightbulb_init();
     factory_init();
-
-    led_light_start();
 
     IOT_SetLogLevel(IOT_LOG_INFO);
     if (HAL_Wifi_Is_Network_Configured()) {
@@ -167,14 +166,11 @@ static void smart_light_example(void* parameter)
     while(1) {
         ESP_LOGI(TAG, "Network is Ready!");
         HAL_Wifi_Got_IP(portMAX_DELAY);
-
-        app_main_paras_t paras;
-        char* argv[] = {"main", "loop"};
-        paras.argc = 2;
-        paras.argv = argv;
-        ESP_LOGI(TAG, "entry linkkit main...");
-        linkkit_main((void *)&paras);
+        IOT_SetLogLevel(IOT_LOG_INFO);
+        linkkit_lightbulb_handle();
     }
+
+    vTaskDelete(NULL);
 }
 
 void app_main()
