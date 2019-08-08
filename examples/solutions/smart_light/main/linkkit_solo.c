@@ -62,6 +62,13 @@ char DEVICE_SECRET[IOTX_DEVICE_SECRET_LEN + 1] = {0};
 
 static user_example_ctx_t g_user_example_ctx;
 
+/** Awss Status event callback */
+static int user_awss_status_event_handler(int status)
+{
+    EXAMPLE_TRACE("Awss Status %d", status);
+
+    return SUCCESS_RETURN;
+}
 
 /** cloud connected event callback */
 static int user_connected_event_handler(void)
@@ -72,11 +79,27 @@ static int user_connected_event_handler(void)
     return 0;
 }
 
+/** cloud connect fail event callback */
+static int user_connect_fail_event_handler(void) 
+{
+    EXAMPLE_TRACE("Cloud Connect Fail");
+
+    return SUCCESS_RETURN;
+}
+
 /** cloud disconnected event callback */
 static int user_disconnected_event_handler(void)
 {
     EXAMPLE_TRACE("Cloud Disconnected");
     g_user_example_ctx.cloud_connected = 0;
+
+    return 0;
+}
+
+/** cloud raw_data arrived event callback */
+static int user_rawdata_arrived_event_handler(const int devid, const unsigned char *request, const int request_len)
+{
+    EXAMPLE_TRACE("Cloud Rawdata Arrived");
 
     return 0;
 }
@@ -112,61 +135,64 @@ static int user_trigger_event_reply_event_handler(const int devid, const int msg
     return 0;
 }
 
-static rgb_t s_rgb = {50, 50, 50};
-
-static void user_parse_cloud_cmd(const char *request, const int request_len)
-{
-    if(request == NULL || request_len <= 0) {
-        return;
-    }
-
-    char* ptr = NULL;
-    // TODO: parse it as fixed format JSON string
-    if(strstr(request, "LightSwitch") != NULL) {        // {"LightSwitch":0}
-        ptr = strstr(request, ":");
-        ptr++;
-        bool on = atoi(ptr);
-        if(on) {
-            ESP_LOGI(TAG, "Set R:%d G:%d B:%d", s_rgb.r, s_rgb.g, s_rgb.b);
-            lightbulb_set_aim(s_rgb.r * PWM_TARGET_DUTY / 100, s_rgb.g * PWM_TARGET_DUTY / 100, s_rgb.b * PWM_TARGET_DUTY / 100, 0, 0, 0);
-        } else {
-            ESP_LOGI(TAG, "Set Light OFF");
-            lightbulb_set_aim(0, 0, 0, 0, 0, 0);
-        }
-
-    } else if (strstr(request, "RGBColor") != NULL) {   // {"RGBColor":{"Red":120,"Blue":36,"Green":108}}
-        ptr = strstr(request, "Red");
-        ptr += 5;
-        s_rgb.r = atoi(ptr);
-
-        ptr = strstr(request, "Blue");
-        ptr += 6;
-        s_rgb.g = atoi(ptr);
-
-        ptr = strstr(request, "Green");
-        ptr += 7;
-        s_rgb.b = atoi(ptr);
-
-        ESP_LOGI(TAG, "Set R:%d G:%d B:%d", s_rgb.r, s_rgb.g, s_rgb.b);
-        lightbulb_set_aim(s_rgb.r * PWM_TARGET_DUTY / 100, s_rgb.g * PWM_TARGET_DUTY / 100, s_rgb.b * PWM_TARGET_DUTY / 100, 0, 0, 0);
-
-    } else {
-        ESP_LOGW(TAG, "unsupported JSON cmd");
-    }
-}
-
 static int user_property_set_event_handler(const int devid, const char *request, const int request_len)
 {
     int res = 0;
+    cJSON *root = NULL, *LightSwitch = NULL, *LightColor = NULL;
     ESP_LOGI(TAG,"Property Set Received, Devid: %d, Request: %s", devid, request);
+    
+    lightbulb_set_brightness(78);
+    lightbulb_set_saturation(100);
+    
+    if (!request) {
+        return NULL_VALUE_ERROR;
+    }
 
-    user_parse_cloud_cmd(request, request_len);
+    /* Parse Root */
+    root = cJSON_Parse(request);
+    if (!root) {
+        ESP_LOGI(TAG,"JSON Parse Error");
+        return FAIL_RETURN;
+    }
+
+    /** Switch Lightbulb On/Off   */
+    LightSwitch = cJSON_GetObjectItem(root, "LightSwitch");
+    if (LightSwitch) {
+        lightbulb_set_on(LightSwitch->valueint);
+    } 
+
+    /** Switch Lightbulb Hue */
+    LightSwitch = cJSON_GetObjectItem(root, "RGBColor");
+    if (LightSwitch) {
+        LightColor = cJSON_GetObjectItem(LightSwitch, "Red");
+        lightbulb_set_hue(LightColor ? LightColor->valueint : 0);
+        LightColor = cJSON_GetObjectItem(LightSwitch, "Green");
+        lightbulb_set_hue(LightColor ? LightColor->valueint : 120);
+        LightColor = cJSON_GetObjectItem(LightSwitch, "Blue");
+        lightbulb_set_hue(LightColor ? LightColor->valueint : 240);
+    }
+    
+    cJSON_Delete(root);
 
     res = IOT_Linkkit_Report(EXAMPLE_MASTER_DEVID, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
     ESP_LOGI(TAG,"Post Property Message ID: %d", res);
 
-    return 0;
+    return SUCCESS_RETURN;
+}
+
+static int user_property_desired_get_reply_event_handler(const char *serviceid, const int serviceid_len)
+{
+    ESP_LOGI(TAG, "ITE_PROPERTY_DESIRED_GET_REPLY");
+
+    return SUCCESS_RETURN;
+}
+
+static int user_property_get_event_handler(const int devid, const char *serviceid, const int serviceid_len, char **response, int *response_len)
+{
+    ESP_LOGI(TAG,"Get Property Message ID: %d", devid);
+
+    return SUCCESS_RETURN;
 }
 
 
@@ -239,7 +265,21 @@ static int user_timestamp_reply_event_handler(const char *timestamp)
 {
     EXAMPLE_TRACE("Current Timestamp: %s", timestamp);
 
-    return 0;
+    return SUCCESS_RETURN;
+}
+
+static int user_toplist_reply_event_handler(const int devid, const int msgid, const int code, const char *eventid, const int eventid_len)
+{
+    EXAMPLE_TRACE("ITE_TOPOLIST_REPLY");
+
+    return SUCCESS_RETURN;
+}
+
+static int user_permit_join_event_handler(const int devid, const int msgid, const int code, const char *eventid, const int eventid_len)
+{
+    EXAMPLE_TRACE("ITE_PERMIT_JOIN");
+    
+    return SUCCESS_RETURN;
 }
 
 /** fota event handler **/
@@ -280,7 +320,14 @@ static int user_cota_event_handler(int type, const char *config_id, int config_s
     return 0;
 }
 
-void user_post_property(void)
+static int user_mqtt_connect_succ_event_handler(void)
+{
+    EXAMPLE_TRACE("ITE_MQTT_CONNECT_SUCC");
+    
+    return SUCCESS_RETURN;
+}
+
+static void user_post_property(void)
 {
     static int cnt = 0;
     int res = 0;
@@ -294,7 +341,7 @@ void user_post_property(void)
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
 }
 
-void user_post_event(void)
+static void user_post_event(void)
 {
     int res = 0;
     char *event_id = "HardwareError";
@@ -305,7 +352,7 @@ void user_post_event(void)
     EXAMPLE_TRACE("Post Event Message ID: %d", res);
 }
 
-void user_deviceinfo_update(void)
+static void user_deviceinfo_update(void)
 {
     int res = 0;
     char *device_info_update = "[{\"attrKey\":\"abc\",\"attrValue\":\"hello,world\"}]";
@@ -315,7 +362,7 @@ void user_deviceinfo_update(void)
     EXAMPLE_TRACE("Device Info Update Message ID: %d", res);
 }
 
-void user_deviceinfo_delete(void)
+static void user_deviceinfo_delete(void)
 {
     int res = 0;
     char *device_info_delete = "[{\"attrKey\":\"abc\"}]";
@@ -325,8 +372,7 @@ void user_deviceinfo_delete(void)
     EXAMPLE_TRACE("Device Info Delete Message ID: %d", res);
 }
 
-// static int max_running_seconds = 0;
-int linkkit_main(void *paras)
+int linkkit_lightbulb_handle(void)
 {
     int res = 0;
     iotx_linkkit_dev_meta_info_t master_meta_info;
@@ -352,16 +398,24 @@ int linkkit_main(void *paras)
     memcpy(master_meta_info.device_secret, DEVICE_SECRET, strlen(DEVICE_SECRET));
 
     /* Register Callback */
+    IOT_RegisterCallback(ITE_AWSS_STATUS, user_awss_status_event_handler);
     IOT_RegisterCallback(ITE_CONNECT_SUCC, user_connected_event_handler);
+    IOT_RegisterCallback(ITE_CONNECT_FAIL, user_connect_fail_event_handler);
     IOT_RegisterCallback(ITE_DISCONNECTED, user_disconnected_event_handler);
+    IOT_RegisterCallback(ITE_RAWDATA_ARRIVED, user_rawdata_arrived_event_handler);
     IOT_RegisterCallback(ITE_SERVICE_REQUEST, user_service_request_event_handler);
     IOT_RegisterCallback(ITE_PROPERTY_SET, user_property_set_event_handler);
+    IOT_RegisterCallback(ITE_PROPERTY_GET, user_property_get_event_handler);
+    IOT_RegisterCallback(ITE_PROPERTY_DESIRED_GET_REPLY, user_property_desired_get_reply_event_handler);
     IOT_RegisterCallback(ITE_REPORT_REPLY, user_report_reply_event_handler);
     IOT_RegisterCallback(ITE_TRIGGER_EVENT_REPLY, user_trigger_event_reply_event_handler);
     IOT_RegisterCallback(ITE_TIMESTAMP_REPLY, user_timestamp_reply_event_handler);
+    IOT_RegisterCallback(ITE_TOPOLIST_REPLY, user_toplist_reply_event_handler);
+    IOT_RegisterCallback(ITE_PERMIT_JOIN, user_permit_join_event_handler);
     IOT_RegisterCallback(ITE_INITIALIZE_COMPLETED, user_initialized);
     IOT_RegisterCallback(ITE_FOTA, user_fota_event_handler);
     IOT_RegisterCallback(ITE_COTA, user_cota_event_handler);
+    IOT_RegisterCallback(ITE_MQTT_CONNECT_SUCC, user_mqtt_connect_succ_event_handler);
 
     domain_type = IOTX_CLOUD_REGION_SHANGHAI;
     IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);
