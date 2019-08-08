@@ -29,80 +29,17 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
-#include "esp_wifi.h"
-#include "esp_event_loop.h"
 #include "esp_log.h"
-#include "nvs_flash.h"
 
 #include "infra_compat.h"
 #include "wifi_provision_api.h"
 
 #include "app_entry.h"
-#include "restore.h"
-#include "light_control.h"
-
-#include "coap_wrapper.h"
+#include "factory_handle.h"
+#include "lightbulb.h"
+#include "wrappers_extra.h"
 
 static const char* TAG = "app main";
-
-
-static EventGroupHandle_t wifi_event_group;
-const int CONNECTED_BIT = BIT0;
-
-static esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-    switch (event->event_id) {
-    case SYSTEM_EVENT_STA_CONNECTED:
-        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_CONNECTED");
-        break;
-
-    case SYSTEM_EVENT_STA_START:
-        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_START");
-        break;
-
-    case SYSTEM_EVENT_STA_GOT_IP:
-        ESP_LOGI(TAG,"SYSTEM_EVENT_STA_GOT_IP");
-        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        break;
-
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-        ESP_LOGW(TAG,"SYSTEM_EVENT_STA_DISCONNECTED");
-        esp_wifi_connect();
-        break;
-    default:
-        break;
-    }
-    return ESP_OK;
-}
-
-
-static void initialise_wifi(void)
-{
-    tcpip_adapter_init();
-    wifi_event_group = xEventGroupCreate();
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_event_loop_init(event_handler, NULL));
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
-    ESP_ERROR_CHECK(esp_wifi_start());
-}
-
-void smart_light_example(void* parameter)
-{
-    while(1) {
-        ESP_LOGI(TAG, "Network is Ready!");
-        xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
-
-        app_main_paras_t paras;
-        char* argv[] = {"main", "loop"};
-        paras.argc = 2;
-        paras.argv = argv;
-        ESP_LOGI(TAG, "entry linkkit main...");
-        linkkit_main((void *)&paras);
-    }
-}
 
 static void linkkit_event_monitor(int event)
 {
@@ -202,44 +139,45 @@ static void linkkit_event_monitor(int event)
     }
 }
 
-
-void app_main()
+static void smart_light_example(void* parameter)
 {
-    //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-
-    ESP_ERROR_CHECK(ret);
-
     ESP_LOGI(TAG, "IDF version: %s", esp_get_idf_version());
+
+    HAL_Kv_Init();
+    HAL_Wifi_Init();
+    factory_init();
 
     led_light_start();
 
-    initialise_wifi();
-
     IOT_SetLogLevel(IOT_LOG_INFO);
-
-    if (restart_count_get() >= LINKKIT_RESTART_COUNT_RESET) {
-        ESP_LOGW(TAG,"Erase information saved in flash");
-        erase_system_count();
-                // make sure user touches device belong to themselves
-        awss_config_press();
-
+    if (HAL_Wifi_Is_Network_Configured()) {
+        HAL_Wifi_Sta_Connect(NULL, 0, NULL, 0, portMAX_DELAY);
+    } else {
         // awss callback
         iotx_event_regist_cb(linkkit_event_monitor);
+        
+        // make sure user touches device belong to themselves
+        awss_config_press();
 
         // awss entry
         awss_start();
         awss_check_reset();
     }
+    
+    while(1) {
+        ESP_LOGI(TAG, "Network is Ready!");
+        HAL_Wifi_Got_IP(portMAX_DELAY);
 
-    ESP_ERROR_CHECK(esp_wifi_connect());
-
-
-    xTaskCreate(smart_light_example, "smart_light_example", 10240, NULL, 5, NULL);
+        app_main_paras_t paras;
+        char* argv[] = {"main", "loop"};
+        paras.argc = 2;
+        paras.argv = argv;
+        ESP_LOGI(TAG, "entry linkkit main...");
+        linkkit_main((void *)&paras);
+    }
 }
 
+void app_main()
+{
+    xTaskCreate(smart_light_example, "smart_light_example", 10240, NULL, 5, NULL);
+}
