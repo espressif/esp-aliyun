@@ -201,5 +201,7 @@ int HAL_Awss_Close_Ap(void)
 
 void HAL_Awss_Switch_Channel(char primary_channel, char secondary_channel, uint8_t bssid[ETH_ALEN])
 {
-    ESP_ERROR_CHECK(esp_wifi_set_channel(primary_channel, secondary_channel));
+    if (esp_wifi_set_channel(primary_channel, secondary_channel) != ESP_OK) {
+        ESP_LOGW(TAG, "HAL_Awss_Switch_Channel primary %d, second %d", primary_channel, secondary_channel);
+    }
 }
