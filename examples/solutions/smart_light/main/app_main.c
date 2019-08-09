@@ -177,8 +177,6 @@ static void linkkit_event_monitor(int event)
 
 void app_main()
 {
-    HAL_Kv_Init();    // Will be moved into wrapper_kv.c
-
     conn_mgr_init();
     conn_mgr_register_wifi_event(wifi_event_handle);
 
