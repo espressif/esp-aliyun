@@ -27,10 +27,10 @@
 
 #include "infra_defs.h"
 #include "iot_import_awss.h"
+#include "dev_bind_wrapper.h"
 
 #include "esp_log.h"
 #include "esp_wifi.h"
-#include "wrappers_extra.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -163,9 +163,20 @@ int HAL_Awss_Connect_Ap(
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_connect());
-    HAL_Wifi_Save_Network((uint8_t *)ssid, HAL_MAX_SSID_LEN, (uint8_t *)passwd, HAL_MAX_PASSWD_LEN);
 
-    return HAL_Wifi_Got_IP(connection_timeout_ms);
+    while (connect_ms < connection_timeout_ms) {
+        if (HAL_Sys_Net_Is_Ready() == 1) {
+            ESP_LOGI(TAG, "AP connected");
+            return SUCCESS_RETURN;
+        } else {
+            ESP_LOGI(TAG, "Connecting AP");
+            vTaskDelay(500 / portTICK_PERIOD_MS);
+            connect_ms += 500;
+        }
+    }
+
+        return FAIL_RETURN;
+
 }
 
 int HAL_Awss_Get_Channelscan_Interval_Ms(void)

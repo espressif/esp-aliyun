@@ -372,7 +372,7 @@ static void user_deviceinfo_delete(void)
     EXAMPLE_TRACE("Device Info Delete Message ID: %d", res);
 }
 
-int linkkit_lightbulb_handle(void)
+int linkkit_main(void *paras)
 {
     int res = 0;
     iotx_linkkit_dev_meta_info_t master_meta_info;
