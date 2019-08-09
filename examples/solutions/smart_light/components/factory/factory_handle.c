@@ -29,7 +29,7 @@
 #include "freertos/timers.h"
 
 #include "dm_wrapper.h"
-#include "wrappers_extra.h"
+#include "conn_mgr.h"
 
 #define FACTORY_MIN_TIMEOUT        (6 * 1000)
 #define FACTORY_TOTAL_COUNT        (5)
@@ -51,11 +51,11 @@ static esp_err_t factory_handle(void)
 
     ret = HAL_Kv_Set(LINKKIT_STORE_FACTORY_KEY, &reboot_num, sizeof(int), 0);
     if (reboot_num >= FACTORY_TOTAL_COUNT) {
-        ESP_LOGE(TAG, "Handle Factory");
+        ESP_LOGW(TAG, "Handle Factory");
         HAL_Kv_Del(LINKKIT_STORE_FACTORY_KEY);
-        HAL_Wifi_Del_Network();
+        conn_mgr_reset_wifi_config();
     } else {
-        ESP_LOGE(TAG, "Don't Factory");
+        ESP_LOGI(TAG, "Don't Factory, reboot times %d", reboot_num);
     }
 
     return ESP_OK;

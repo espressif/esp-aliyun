@@ -76,14 +76,14 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
     ret = nvs_open_from_partition(NVS_PARTITION_NAME, NVS_KV, NVS_READONLY, &handle);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs open %s failed with %x", NVS_KV, ret);
+        ESP_LOGW(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
 
     ret = nvs_get_blob(handle, key, val, (size_t *) buffer_len);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs get blob %s failed with %x", key, ret);
+        ESP_LOGW(TAG, "nvs get blob %s failed with %x", key, ret);
     }
 
     nvs_close(handle);

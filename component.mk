@@ -19,6 +19,7 @@ iotkit-embedded/wifi_provision/smartconfig \
 iotkit-embedded/wifi_provision/zero_config
 
 COMPONENT_ADD_INCLUDEDIRS := \
+conn_mgr \
 iotkit-embedded/atm \
 iotkit-embedded/coap_server \
 iotkit-embedded/dev_bind \
@@ -33,6 +34,7 @@ iotkit-embedded \
 wrappers
 
 COMPONENT_SRCDIRS := \
+conn_mgr \
 iotkit-embedded/atm \
 iotkit-embedded/certs \
 iotkit-embedded/dev_bind/impl \

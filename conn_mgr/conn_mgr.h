@@ -21,9 +21,58 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-#ifndef _LINKKIT_SOLO_H__
-#define _LINKKIT_SOLO_H__
 
-int linkkit_main(void *paras);
+#pragma once
 
+#include "esp_err.h"
+#include "esp_event_loop.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Unregister System Event handler for External Provisioning.
+ *
+ * If a system handler is registered for external provisioning using HAL_Wifi_Register_Prov_Handler(),
+ * the same can be unregistered using this call. 
+ */
+void conn_mgr_register_wifi_event(system_event_cb_t cb);
+
+/**
+ * @brief Restore the information of an AP
+ * 
+ * @return SUCCESS_RETURN on success
+ * @return other on error
+ */
+esp_err_t conn_mgr_reset_wifi_config(void);
+
+/**
+ * @brief Initialize the information of wifi module
+ * 
+ * @return SUCCESS_RETURN on success
+ * @return other on error
+ */
+esp_err_t conn_mgr_init(void);
+
+/**
+ * @brief Start the connect of wifi module to the AP.
+ * 
+ * This starts the wifi config and also connect it
+ * 
+ * @return SUCCESS_RETURN on success
+ * @return other on error
+ */
+esp_err_t conn_mgr_start(void);
+
+/**
+ * @brief Initialize the information of key store
+ *
+ * @return SUCCESS_RETURN on success
+ * @return other on error
+ */
+int HAL_Kv_Init(void);
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
