@@ -7,33 +7,16 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "iot_import.h"
-#include "iot_export.h"
+#include "esp_system.h"
 
-#if defined(TEST_OTA_PRE)
-    #define PRODUCT_KEY             "6RcIOUafDOm"
-    #define DEVICE_NAME             "sh_pre_sample_mqtt"
-    #define DEVICE_SECRET           "R0OTtD46DSalSpGW7SFzFDIA6fksTC2c"
-#elif defined(TEST_MQTT_DAILY)
-    #define PRODUCT_KEY             "fR9zCD4oT72"
-    #define DEVICE_NAME             "ota_test"
-    #define DEVICE_SECRET           "67szT5tQNMIu3sbrd3UwLhs7M73wTHXQ"
-#else
-    #define PRODUCT_KEY             "a1MZxOdcBnO"
-    #define DEVICE_NAME             "test_01"
-    #define DEVICE_SECRET           "t9GmMf2jb3LgWfXBaZD2r3aJrfVWBv56"
-#endif
+#include "infra_compat.h"
+#include "mqtt_api.h"
+#include "ota_api.h"
+#include "dm_wrapper.h"
 
-char g_product_key[PRODUCT_KEY_LEN + 1];
-char g_product_secret[PRODUCT_SECRET_LEN + 1];
-char g_device_name[DEVICE_NAME_LEN + 1];
-char g_device_secret[DEVICE_SECRET_LEN + 1];
-
-/* These are pre-defined topics */
-#define TOPIC_UPDATE            "/"PRODUCT_KEY"/"DEVICE_NAME"/update"
-#define TOPIC_ERROR             "/"PRODUCT_KEY"/"DEVICE_NAME"/update/error"
-#define TOPIC_GET               "/"PRODUCT_KEY"/"DEVICE_NAME"/get"
-#define TOPIC_DATA              "/"PRODUCT_KEY"/"DEVICE_NAME"/data"
+char g_product_key[IOTX_PRODUCT_KEY_LEN + 1] = {0};
+char g_device_name[IOTX_DEVICE_NAME_LEN + 1] = {0};
+char g_device_secret[IOTX_DEVICE_SECRET_LEN + 1] = {0};
 
 #define OTA_MQTT_MSGLEN         (2048)
 
@@ -43,9 +26,6 @@ char g_device_secret[DEVICE_SECRET_LEN + 1];
         HAL_Printf(fmt, ##__VA_ARGS__); \
         HAL_Printf("%s", "\r\n"); \
     } while(0)
-
-static int      user_argc;
-static char   **user_argv;
 
 void event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg)
 {
@@ -178,7 +158,7 @@ static int _ota_mqtt_client(void)
         rc = -1;
         goto do_exit;
     }
-    h_ota = IOT_OTA_Init(PRODUCT_KEY, DEVICE_NAME, pclient);
+    h_ota = IOT_OTA_Init(g_product_key, g_device_name, pclient);
     if (NULL == h_ota) {
         rc = -1;
         EXAMPLE_TRACE("initialize OTA failed");
@@ -249,7 +229,10 @@ static int _ota_mqtt_client(void)
         HAL_SleepMs(2000);
     } while (!ota_over);
 
-    HAL_Firmware_Persistence_Stop();
+    if (HAL_Firmware_Persistence_Stop() == SUCCESS_RETURN) {
+        esp_restart();
+    }
+
     HAL_SleepMs(200);
 
 
@@ -275,16 +258,8 @@ do_exit:
     return rc;
 }
 
-int linkkit_main(int argc, char **argv)
+int ota_main(void *paras)
 {
-    IOT_SetLogLevel(IOT_LOG_DEBUG);
-
-    user_argc = argc;
-    user_argv = argv;
-
-    HAL_SetProductKey(PRODUCT_KEY);
-    HAL_SetDeviceName(DEVICE_NAME);
-    HAL_SetDeviceSecret(DEVICE_SECRET);
     _ota_mqtt_client();
 
     IOT_DumpMemoryStats(IOT_LOG_DEBUG);
