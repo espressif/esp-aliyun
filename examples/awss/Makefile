@@ -4,9 +4,8 @@
 #
 PROJECT_NAME := awss
 
-export ESP_ALIYUN_PATH := $(realpath ../../)
-export IE_PATH ?= $(ESP_ALIYUN_PATH)/iotkit-embedded
+EXTRA_COMPONENT_DIRS := $(realpath ../../..)
 
-EXTRA_COMPONENT_DIRS := $(realpath ../../)
+SDKCONFIG_DEFAULTS := sdkconfig_$(chip).defaults
 
 include $(IDF_PATH)/make/project.mk
