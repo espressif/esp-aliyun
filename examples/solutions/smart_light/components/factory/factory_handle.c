@@ -79,10 +79,12 @@ static void factory_clear(void *timer)
 
 int factory_init(void)
 {
+    #ifdef CONFIG_IDF_TARGET_ESP32
     if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED) {
         HAL_Kv_Del(LINKKIT_STORE_FACTORY_KEY);
         return ESP_OK;
     }
+    #endif
 
     TimerHandle_t timer = NULL;
     esp_err_t ret      = ESP_OK;
