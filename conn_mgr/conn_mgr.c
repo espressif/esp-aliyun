@@ -23,12 +23,24 @@
  */
 
 #include <stdlib.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <limits.h>
 #include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
 
 #include "esp_err.h"
 #include "esp_event_loop.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+
+#if CONFIG_SSL_USING_WOLFSSL
+#include "lwip/apps/sntp.h"
+#endif
 
 #include "wifi_provision_api.h"
 #include "dm_wrapper.h"
@@ -96,11 +108,60 @@ static esp_err_t conn_mgr_save_wifi_config(void)
     return ESP_OK;
 }
 
+#if CONFIG_SSL_USING_WOLFSSL
+static esp_err_t conn_mgr_obtain_time(void)
+{
+    static bool get_time_flag = false;
+    if (get_time_flag) {
+        return ESP_OK;
+    }
+
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "ntp1.aliyun.com");
+    sntp_setservername(1, "ntp2.aliyun.com");
+    sntp_setservername(2, "ntp3.aliyun.com");
+    sntp_init();
+
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int sntp_retry_cnt = 0;
+    int sntp_retry_time = 0;
+    while (1) {
+        for (int32_t i = 0; (i < (SNTP_RECV_TIMEOUT / 100)) && timeinfo.tm_year < (2019 - 1900); i ++) {
+            vTaskDelay(100 / portTICK_RATE_MS);
+            time(&now);
+            localtime_r(&now, &timeinfo);
+        }
+
+        if (timeinfo.tm_year < (2019 - 1900) && sntp_retry_cnt < (SNTP_RECV_TIMEOUT / 100)) {
+            sntp_retry_time = SNTP_RECV_TIMEOUT << sntp_retry_cnt;
+
+            if (SNTP_RECV_TIMEOUT << (sntp_retry_cnt + 1) < SNTP_RETRY_TIMEOUT_MAX) {
+                sntp_retry_cnt ++;
+            }
+
+            ESP_LOGI(TAG,"SNTP get time failed, retry after %d ms\n", sntp_retry_time);
+            vTaskDelay(sntp_retry_time / portTICK_RATE_MS);
+        } else {
+            ESP_LOGI(TAG,"SNTP get time success\n");
+            break;
+        }
+    }
+
+    get_time_flag = true;
+
+    return ESP_OK;
+}
+#endif
+
 static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *event)
 {
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_GOT_IP:
             conn_mgr_save_wifi_config();
+            #if CONFIG_SSL_USING_WOLFSSL
+            conn_mgr_obtain_time();
+            #endif
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
