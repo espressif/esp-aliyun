@@ -155,6 +155,9 @@ static esp_err_t conn_mgr_is_configured(bool *configured)
 
 esp_err_t conn_mgr_init(void)
 {
+    extern esp_err_t HAL_Kv_Init(void);
+    HAL_Kv_Init();
+
     tcpip_adapter_init();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -162,7 +165,6 @@ esp_err_t conn_mgr_init(void)
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
 
     return ESP_OK;

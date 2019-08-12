@@ -26,12 +26,39 @@
 
 #include "nvs_flash.h"
 #include "nvs.h"
+
+#include "esp_err.h"
 #include "esp_log.h"
 
 #define NVS_PARTITION_NAME  "nvs"
 #define NVS_KV              "iotkit-kv"
 
 static const char *TAG = "wrapper_kv";
+
+static bool s_kv_init_flag;
+
+esp_err_t HAL_Kv_Init(void)
+{
+    esp_err_t ret = ESP_OK;
+
+    do {
+        if (s_kv_init_flag == false) {
+            ret = nvs_flash_init_partition(NVS_PARTITION_NAME);
+
+            if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+                ESP_ERROR_CHECK(nvs_flash_erase_partition(NVS_PARTITION_NAME));
+                ret = nvs_flash_init_partition(NVS_PARTITION_NAME);
+            } else if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "NVS Flash init %s failed!", NVS_PARTITION_NAME);
+                break;
+            }
+
+            s_kv_init_flag = true;
+        }
+    } while (0);
+
+    return ret;
+}
 
 int HAL_Kv_Del(const char *key)
 {
@@ -40,6 +67,10 @@ int HAL_Kv_Del(const char *key)
 
     if (key == NULL) {
         ESP_LOGE(TAG, "HAL_Kv_Del Null key");
+        return ESP_FAIL;
+    }
+
+    if (HAL_Kv_Init() != ESP_OK) {
         return ESP_FAIL;
     }
 
@@ -73,6 +104,10 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
         return ESP_FAIL;
     }
 
+    if (HAL_Kv_Init() != ESP_OK) {
+        return ESP_FAIL;
+    }
+
     ret = nvs_open_from_partition(NVS_PARTITION_NAME, NVS_KV, NVS_READONLY, &handle);
 
     if (ret != ESP_OK) {
@@ -101,6 +136,10 @@ int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
         return ESP_FAIL;
     }
 
+    if (HAL_Kv_Init() != ESP_OK) {
+        return ESP_FAIL;
+    }
+
     ret = nvs_open_from_partition(NVS_PARTITION_NAME, NVS_KV, NVS_READWRITE, &handle);
 
     if (ret != ESP_OK) {
@@ -118,17 +157,5 @@ int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
 
     nvs_close(handle);
 
-    return ret;
-}
-
-int HAL_Kv_Init(void)
-{
-    esp_err_t ret = ESP_OK;
-    ret = nvs_flash_init_partition(NVS_PARTITION_NAME);
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-        ESP_ERROR_CHECK(nvs_flash_erase_partition(NVS_PARTITION_NAME));
-        ret = nvs_flash_init_partition(NVS_PARTITION_NAME);
-    }
-    
     return ret;
 }

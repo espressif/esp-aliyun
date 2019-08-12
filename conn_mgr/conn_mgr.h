@@ -32,47 +32,44 @@ extern "C" {
 #endif
 
 /**
- * Unregister System Event handler for External Provisioning.
+ * @brief register wifi event handler
  *
- * If a system handler is registered for external provisioning using HAL_Wifi_Register_Prov_Handler(),
- * the same can be unregistered using this call. 
+ * @param cb wifi event handler
+ *
+ * @return none
  */
 void conn_mgr_register_wifi_event(system_event_cb_t cb);
 
 /**
- * @brief Restore the information of an AP
+ * @brief reset the stored router info, include ssid & password
  * 
- * @return SUCCESS_RETURN on success
- * @return other on error
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
  */
 esp_err_t conn_mgr_reset_wifi_config(void);
 
 /**
- * @brief Initialize the information of wifi module
+ * @brief init the connection management module
  * 
- * @return SUCCESS_RETURN on success
- * @return other on error
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
  */
 esp_err_t conn_mgr_init(void);
 
 /**
- * @brief Start the connect of wifi module to the AP.
+ * @brief start the connection management module
  * 
- * This starts the wifi config and also connect it
+ * If the device is configured, the device will connect to the router which is configured.
+ * If the device is not configured, the device will start awss service.
  * 
- * @return SUCCESS_RETURN on success
- * @return other on error
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
  */
 esp_err_t conn_mgr_start(void);
 
-/**
- * @brief Initialize the information of key store
- *
- * @return SUCCESS_RETURN on success
- * @return other on error
- */
-int HAL_Kv_Init(void);
-
 #ifdef __cplusplus
-} // extern "C"
+}
 #endif
