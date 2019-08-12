@@ -214,6 +214,24 @@ static esp_err_t conn_mgr_is_configured(bool *configured)
     return ESP_OK;
 }
 
+esp_err_t conn_mgr_set_wifi_config_ext(const uint8_t *ssid, size_t ssid_len, const uint8_t *password, size_t password_len)
+{
+    wifi_config_t wifi_config = {0};
+
+    if (!ssid || ssid_len > sizeof(wifi_config.sta.ssid) || password_len > sizeof(wifi_config.sta.password))
+        return ESP_ERR_INVALID_ARG;
+    
+    memcpy(wifi_config.sta.ssid, ssid, ssid_len); 
+    if (password) {
+        memcpy(wifi_config.sta.password, password, password_len); 
+    }
+    esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+
+    conn_mgr_save_wifi_config();
+
+    return ESP_OK;
+}
+
 esp_err_t conn_mgr_init(void)
 {
     extern esp_err_t HAL_Kv_Init(void);

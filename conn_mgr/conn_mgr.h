@@ -50,6 +50,22 @@ void conn_mgr_register_wifi_event(system_event_cb_t cb);
 esp_err_t conn_mgr_reset_wifi_config(void);
 
 /**
+ * @brief connect wifi with configure information 
+ * 
+ * This will initiate connection to the given Wi-Fi configure information
+ * 
+ * @param ssid Pointer to the target network SSID string
+ * @param ssid_len Length of the above SSID
+ * @param password Pointer to the targer network Password string. Can be NULL for open networks.
+ * @param password_len Length of the password
+ * 
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
+ */
+esp_err_t conn_mgr_set_wifi_config_ext(const uint8_t *ssid, size_t ssid_len, const uint8_t *password, size_t password_len);
+
+/**
  * @brief init the connection management module
  * 
  * @return
