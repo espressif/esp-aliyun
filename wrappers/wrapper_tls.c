@@ -148,10 +148,6 @@ int32_t HAL_SSL_Destroy(uintptr_t handle)
 
 uintptr_t HAL_SSL_Establish(const char *host, uint16_t port, const char *ca_crt, uint32_t ca_crt_len)
 {
-#if CONFIG_SSL_USING_WOLFSSL
-    host_run_nds(host);
-    obtain_time();
-#endif
     esp_tls_cfg_t cfg = {
         .cacert_pem_buf  = (const unsigned char *)ca_crt,
         .cacert_pem_bytes = ca_crt_len,
