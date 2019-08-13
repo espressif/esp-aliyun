@@ -72,8 +72,7 @@ void app_main()
 
     conn_mgr_init();
     conn_mgr_register_wifi_event(wifi_event_handle);
-	conn_mgr_set_wifi_config_ext((const uint8_t *)EXAMPLE_WIFI_SSID, strlen(EXAMPLE_WIFI_SSID),
-	                                (const uint8_t *)EXAMPLE_WIFI_PASS, strlen(EXAMPLE_WIFI_PASS));
+    conn_mgr_set_wifi_config_ext((const uint8_t *)EXAMPLE_WIFI_SSID, strlen(EXAMPLE_WIFI_SSID), (const uint8_t *)EXAMPLE_WIFI_PASS, strlen(EXAMPLE_WIFI_PASS));
 
     IOT_SetLogLevel(IOT_LOG_INFO);
 
