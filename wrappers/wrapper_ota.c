@@ -137,5 +137,5 @@ int HAL_Firmware_Persistence_Write(char *buffer, uint32_t length)
         return FAIL_RETURN;
     }
 
-    return SUCCESS_RETURN;
+    return length;
 }
