@@ -31,7 +31,7 @@
 #include "infra_compat.h"
 
 #include "linkkit_solo.h"
-#include "factory_handle.h"
+#include "factory_restore.h"
 #include "lightbulb.h"
 
 #include "conn_mgr.h"
@@ -177,13 +177,14 @@ static void linkkit_event_monitor(int event)
 
 void app_main()
 {
+    factory_restore_init();
+
+    lightbulb_init();
+
     conn_mgr_init();
     conn_mgr_register_wifi_event(wifi_event_handle);
 
     iotx_event_regist_cb(linkkit_event_monitor);    // awss callback
-
-    lightbulb_init();
-    factory_init();
 
     IOT_SetLogLevel(IOT_LOG_INFO);
 
