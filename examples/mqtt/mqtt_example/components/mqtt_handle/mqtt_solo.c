@@ -40,7 +40,7 @@ void example_message_arrive(void *pcontext, void *pclient, iotx_mqtt_event_msg_p
 int example_subscribe(void *handle)
 {
     int res = 0;
-    const char *fmt = "/%s/%s/get";
+    const char *fmt = "/%s/%s/user/get";
     char *topic = NULL;
     int topic_len = 0;
 
@@ -67,7 +67,7 @@ int example_subscribe(void *handle)
 int example_publish(void *handle)
 {
     int             res = 0;
-    const char     *fmt = "/%s/%s/get";
+    const char     *fmt = "/%s/%s/user/get";
     char           *topic = NULL;
     int             topic_len = 0;
     char           *payload = "{\"message\":\"hello!\"}";
@@ -98,16 +98,16 @@ void example_event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt 
 }
 
 /*
- *  NOTE: About demo topic of /${productKey}/${deviceName}/get
+ *  NOTE: About demo topic of /${productKey}/${deviceName}/user/get
  *
  *  The demo device has been configured in IoT console (https://iot.console.aliyun.com)
- *  so that its /${productKey}/${deviceName}/get can both be subscribed and published
+ *  so that its /${productKey}/${deviceName}/user/get can both be subscribed and published
  *
  *  We design this to completely demonstrate publish & subscribe process, in this way
  *  MQTT client can receive original packet sent by itself
  *
  *  For new devices created by yourself, pub/sub privilege also requires being granted
- *  to its /${productKey}/${deviceName}/get for successfully running whole example
+ *  to its /${productKey}/${deviceName}/user/get for successfully running whole example
  */
 
 int mqtt_main(void *paras)
