@@ -147,7 +147,20 @@ int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN + 1])
  */
 int HAL_GetFirmwareVersion(char *version)
 {
-    return 0;
+    if (!version) {
+        ESP_LOGE(TAG, "%s version is NULL", __func__);
+        return 0;
+    }
+
+    memset(version, 0, IOTX_FIRMWARE_VER_LEN);
+    int len = strlen(CONFIG_LINKKIT_FIRMWARE_VERSION);
+    if (len > IOTX_FIRMWARE_VER_LEN) {
+        len = 0;
+    } else {
+        memcpy(version, CONFIG_LINKKIT_FIRMWARE_VERSION, len);
+    }
+
+    return len;
 }
 
 static int HAL_SetProductParam(char *param_name, const char *param_name_str)
