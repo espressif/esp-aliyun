@@ -85,7 +85,15 @@ make -j8 flash monitor
 ![](_static/p15.png)
 
 #### 11.OTA 支持
-参考 examples/ota/ota_example_mqtt 示例下的 [README](../../ota/ota_example_mqtt/README.md)
+参考 examples/ota/ota_example_mqtt 示例下的 [README](../../ota/ota_example_mqtt/README.md) , 向管理控制台上传固件, 验证固件后, 下发升级指令.
+设备端收到升级指令后, 即开始 OTA:
+![](_static/p16.png)
+
+升级完成后, 会检查固件的有效性, 下图说明固件有效.
+![](_static/p17.png)
+
+iotkit-embedded 目前没有设置软重启操作, 可以手动按模组重启键运行新固件:
+![](_static/p18.png)
 
 ### 后续计划
 - 支持天猫精灵控制
