@@ -7,8 +7,8 @@
 #### 1.参考 [README](../../../README.md) 文档进行硬件准备、环境搭建、SDK 准备
 
 #### 2.阿里云平台部署
-在 [智能生活开放平台](https://living.aliyun.com/#/) 创建产品, 参考[创建产品文档](https://living.aliyun.com/doc#readygo.html).
-> 如果已经创建过产品, 可跳过此步骤.
+在阿里云 [物联网平台](https://iot.console.aliyun.com) 创建产品. 或者在阿里云 [生活物联网平台](https://living.aliyun.com/#/) 创建产品, 会显示在 `物联网平台`, 参考[创建产品文档](https://living.aliyun.com/doc#readygo.html).
+> 如果已经创建过产品, 可跳过此步骤.  
 > 创建产品设备后,可以获取`三元组`, 后续需要烧录到 NVS 分区.
 
 #### 3.下载本工程
