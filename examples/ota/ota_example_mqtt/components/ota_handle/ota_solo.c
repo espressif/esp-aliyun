@@ -14,6 +14,8 @@
 #include "ota_api.h"
 #include "dm_wrapper.h"
 
+void HAL_Reboot();
+
 char g_product_key[IOTX_PRODUCT_KEY_LEN + 1] = {0};
 char g_device_name[IOTX_DEVICE_NAME_LEN + 1] = {0};
 char g_device_secret[IOTX_DEVICE_SECRET_LEN + 1] = {0};
@@ -230,7 +232,7 @@ static int _ota_mqtt_client(void)
     } while (!ota_over);
 
     if (HAL_Firmware_Persistence_Stop() == SUCCESS_RETURN) {
-        esp_restart();
+        HAL_Reboot();
     }
 
     HAL_SleepMs(200);
