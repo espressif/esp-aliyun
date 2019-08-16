@@ -30,7 +30,7 @@ ESP 设备包括 [ESP芯片](https://www.espressif.com/zh-hans/products/hardware
 
 # <span id = "aliyunprepare">3.阿里云平台准备</span>
 根据[阿里官方文档](https://github.com/aliyun/iotkit-embedded?spm=5176.doc42648.2.4.e9Zu05)，在阿里云平台创建产品，创建设备，同时自动产生 `product key`, `product secert`, `device name`, `device secret`。  
-`product key`, `product secert`, `device name`, `device secret` 将在 6.1.2 节用到。
+`product key`, `product secert`, `device name`, `device secret` 将在 6.2.3 节用到。
 
 # <span id = "compileprepare">4.环境搭建</span>
 **如果您熟悉 ESP 开发环境，可以很顺利理解下面步骤; 如果您不熟悉某个部分，比如编译，烧录，需要您结合官方的相关文档来理解。如您需阅读 [ESP-IDF 编程指南](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)文档等。**  
@@ -58,7 +58,7 @@ $ ./components/esptool_py/esptool/esptool.py --help
 
 > Espressif SDK 下载好后：  
 > ESP-IDF: 请切换到 release/v3.2 分支： `git checkout release/v3.2`  
-> ESP8266_RTOS_SDK: 请切换到 release/v3.1 分支： `git checkout release/v3.1`
+> ESP8266_RTOS_SDK: 请切换到 release/v3.2 分支： `git checkout release/v3.2`
 
 # <span id = "makeflash">6.编译 & 烧写 & 运行</span>
 ## 6.1 编译
@@ -66,34 +66,19 @@ $ ./components/esptool_py/esptool/esptool.py --help
 ### 6.1.1 导出编译器
 参考 [工具链的设置](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/linux-setup.html)
 
-### 6.1.2 编译 iotkit-embedded SDK
-1. 拷贝针对 iotkit-embedded 的 patch
+### 6.1.2 编译 demo 示例
+**由于 esp32 和 esp8266 将会采用不同的 sdkconfig.defaults 和对应的 partitions.csv，在对应的 make 命令中加入了对应的芯片选项，如 chip=esp32 或 chip=esp8266。**
 
-为了解决在 MacOS 下的编译问题，修改了部分 iotkit-embedded 中的文件。
-在 esp-aliyun 目录下执行：
+当 chip=esp32 时将默认使用 sdkconfig_esp32.defaults 以及 partitions_esp32.csv。
+当 chip=esp8266 时将默认使用 sdkconfig_esp8266.defaults 以及 partitions_esp8266.csv。
 
-```
-cp -r patch/* iotkit-embedded/
-```
-
-2. 编译生成 `libiot_sdk.a`
-
-```
-cd iotkit-embedded
-make reconfig
-# 选择 esp8266 或 esp32 平台
-make
-cd ..
-```
-
-### 6.1.3 编译 demo 示例
-- 进入需要编译的 example, 配置三元组信息等
+以上需要特别注意。
 
 在 esp-aliyun 目录下执行：
 
 ```
 cd examples/solutions/smart_light
-make defconfig
+make chip=esp32 defconfig
 make menuconfig
 ```
 
@@ -105,7 +90,7 @@ make menuconfig
 2.生成最终 bin
 
 ```
-make
+make -j8
 ```
 
 ## 6.2 擦除 & 编译烧写 & 下载固件 & 查看 log
@@ -115,13 +100,17 @@ make
 ```
 make erase_flash
 ```
+> 注：无需每次擦除，擦除后需要重做 6.2.3。
 
 ### 6.2.2 烧录程序
 ```
 make flash
 ```
 
-## 6.2.3 运行
+### 6.2.3 烧录三元组信息
+参考 [量产说明](./config/mass_mfg/README.md) 文档烧录三元组 NVS 分区。
+
+## 6.2.4 运行
 
 ```
 make monitor

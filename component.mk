@@ -1,40 +1,65 @@
 # Makefile
 
-# CFLAGS +=
+COMPONENT_PRIV_INCLUDEDIRS := \
+iotkit-embedded/coap_server/CoAPPacket \
+iotkit-embedded/coap_server/server \
+iotkit-embedded/dev_bind/impl \
+iotkit-embedded/dev_bind/impl/os \
+iotkit-embedded/dev_bind/impl/awss_reset \
+iotkit-embedded/wifi_provision/dev_ap \
+iotkit-embedded/wifi_provision/frameworks \
+iotkit-embedded/wifi_provision/frameworks/aplist \
+iotkit-embedded/wifi_provision/frameworks/ieee80211 \
+iotkit-embedded/wifi_provision/frameworks/statics \
+iotkit-embedded/wifi_provision/frameworks/utils \
+iotkit-embedded/wifi_provision/p2p \
+iotkit-embedded/wifi_provision/phone_ap \
+iotkit-embedded/wifi_provision/router_ap \
+iotkit-embedded/wifi_provision/smartconfig \
+iotkit-embedded/wifi_provision/zero_config
 
-# version of iotkit-embedded: https://github.com/aliyun/iotkit-embedded
-IE_VER := $(shell cd ${IE_PATH} && git describe --always --tags --dirty)
+COMPONENT_ADD_INCLUDEDIRS := \
+conn_mgr \
+iotkit-embedded/atm \
+iotkit-embedded/coap_server \
+iotkit-embedded/dev_bind \
+iotkit-embedded/dev_model \
+iotkit-embedded/dev_sign \
+iotkit-embedded/dynamic_register \
+iotkit-embedded/mqtt \
+iotkit-embedded/ota \
+iotkit-embedded/infra \
+iotkit-embedded/wifi_provision \
+iotkit-embedded \
+wrappers
 
-# version of esp-aliyun: https://github.com/espressif/esp-aliyun
-EA_VER := $(shell cd ${ESP_ALIYUN_PATH} && git describe --always --tags --dirty)
+COMPONENT_SRCDIRS := \
+conn_mgr \
+iotkit-embedded/atm \
+iotkit-embedded/certs \
+iotkit-embedded/dev_bind/impl \
+iotkit-embedded/dev_bind/impl/os \
+iotkit-embedded/dev_bind/impl/awss_reset \
+iotkit-embedded/dev_model \
+iotkit-embedded/dev_reset \
+iotkit-embedded/dev_sign \
+iotkit-embedded/dynamic_register \
+iotkit-embedded/infra \
+iotkit-embedded/mqtt \
+iotkit-embedded/ota \
+iotkit-embedded/wifi_provision/dev_ap \
+iotkit-embedded/wifi_provision/frameworks \
+iotkit-embedded/wifi_provision/frameworks/aplist \
+iotkit-embedded/wifi_provision/frameworks/ieee80211 \
+iotkit-embedded/wifi_provision/frameworks/statics \
+iotkit-embedded/wifi_provision/frameworks/utils \
+iotkit-embedded/wifi_provision/p2p \
+iotkit-embedded/wifi_provision/phone_ap \
+iotkit-embedded/wifi_provision/router_ap \
+iotkit-embedded/wifi_provision/smartconfig \
+iotkit-embedded/wifi_provision/zero_config \
+iotkit-embedded/coap_server/CoAPPacket \
+iotkit-embedded/coap_server/server \
+wrappers
 
-CFLAGS += -DIE_VER=\"$(IE_VER)\"
-CFLAGS += -DEA_VER=\"$(EA_VER)\"
-
-COMPONENT_IOTKIT_RELEASE_PATH = iotkit-embedded/output/release
-
-COMPONENT_ADD_INCLUDEDIRS :=	\
-$(COMPONENT_IOTKIT_RELEASE_PATH)/include			\
-$(COMPONENT_IOTKIT_RELEASE_PATH)/include/imports		\
-$(COMPONENT_IOTKIT_RELEASE_PATH)/include/exports		\
-iotkit-embedded/src/services/awss	\
-platform/crypto/include	\
-platform/hal	\
-platform/include
-
-COMPONENT_SRCDIRS :=			\
-platform/hal/os/espressif
-
-ifdef CONFIG_TARGET_PLATFORM_ESP8266
-# ESP8266 platform
-COMPONENT_SRCDIRS += platform/crypto/src	\
-platform/hal/ssl/openssl
-
-else
-# ESP32 platform
-COMPONENT_SRCDIRS += platform/hal/ssl/mbedtls
-endif
-
-# link libiot_sdk.a
-LIBS += iot_sdk
-COMPONENT_ADD_LDFLAGS += -L $(COMPONENT_PATH)/$(COMPONENT_IOTKIT_RELEASE_PATH)/lib $(addprefix -l,$(LIBS))
+CFLAGS += -Wno-char-subscripts
