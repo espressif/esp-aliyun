@@ -192,13 +192,16 @@ int HAL_ThreadCreate(
 
     *stack_used = 0;
 
+#ifdef CONFIG_IDF_TARGET_ESP8266
+    ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
+#else
     if (hal_os_thread_param->stack_size == 0) {
         ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
     } else {
         attr.stacksize = hal_os_thread_param->stack_size;
         ret = pthread_create((pthread_t *)thread_handle, &attr, work_routine, arg);
     }
-
+#endif
     return ret;
 
 }
