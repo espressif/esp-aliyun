@@ -350,6 +350,140 @@ int iotx_net_init(utils_network_pt pNetwork, const char *host, uint16_t port, co
 
     return 0;
 }
+
+#ifdef SUPPORT_TCP
+uintptr_t HAL_TCP_Establish(const char *host, uint16_t port);
+int HAL_TCP_Destroy(uintptr_t fd);
+int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms);
+int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms);
+void *HAL_Malloc(uint32_t size);
+void HAL_Free(void *ptr);
+
+/*** TCP connection ***/
+static int read_tcp(utils_network_pt pNetwork, char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    return HAL_TCP_Read(pNetwork->handle, buffer, len, timeout_ms);
+}
+
+
+static int write_tcp(utils_network_pt pNetwork, const char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    return HAL_TCP_Write(pNetwork->handle, buffer, len, timeout_ms);
+}
+
+static int disconnect_tcp(utils_network_pt pNetwork)
+{
+    if (pNetwork->handle == (uintptr_t)(-1)) {
+        net_err("Network->handle = -1");
+        return -1;
+    }
+
+    HAL_TCP_Destroy(pNetwork->handle);
+    pNetwork->handle = (uintptr_t)(-1);
+    return 0;
+}
+
+static int connect_tcp(utils_network_pt pNetwork)
+{
+    if (NULL == pNetwork) {
+        net_err("network is null");
+        return 1;
+    }
+
+    pNetwork->handle = HAL_TCP_Establish(pNetwork->pHostAddress, pNetwork->port);
+    if (pNetwork->handle == (uintptr_t)(-1)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+/****** network interface ******/
+int utils_net_tcp_read(utils_network_pt pNetwork, char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    int     ret = 0;
+
+    if (NULL == pNetwork->ca_crt) {
+        ret = read_tcp(pNetwork, buffer, len, timeout_ms);
+    }
+    else {
+        ret = -1;
+        net_err("no method match!");
+    }
+
+    return ret;
+}
+
+int utils_net_tcp_write(utils_network_pt pNetwork, const char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    int     ret = 0;
+
+    if (NULL == pNetwork->ca_crt) {
+        ret = write_tcp(pNetwork, buffer, len, timeout_ms);
+    }
+    else {
+        ret = -1;
+        net_err("no method match!");
+    }
+
+    return ret;
+}
+
+int iotx_net_tcp_disconnect(utils_network_pt pNetwork)
+{
+    int     ret = 0;
+
+    if (NULL == pNetwork->ca_crt) {
+        ret = disconnect_tcp(pNetwork);
+    }
+    else {
+        ret = -1;
+        net_err("no method match!");
+    }
+
+    return  ret;
+}
+
+int iotx_net_tcp_connect(utils_network_pt pNetwork)
+{
+    int     ret = 0;
+    if (NULL == pNetwork->ca_crt) {
+        ret = connect_tcp(pNetwork);
+    }
+    else {
+        ret = -1;
+        net_err("no method match!");
+    }
+
+    return ret;
+}
+
+int iotx_net_tcp_init(utils_network_pt pNetwork, const char *host, uint16_t port, const char *ca_crt)
+{
+    if (!pNetwork || !host) {
+        net_err("parameter error! pNetwork=%p, host = %p", pNetwork, host);
+        return -1;
+    }
+    pNetwork->pHostAddress = host;
+    pNetwork->port = port;
+    pNetwork->ca_crt = ca_crt;
+
+    if (NULL == ca_crt) {
+        pNetwork->ca_crt_len = 0;
+    } else {
+        pNetwork->ca_crt_len = strlen(ca_crt);
+    }
+
+    pNetwork->handle = 0;
+    pNetwork->read = utils_net_tcp_read;
+    pNetwork->write = utils_net_tcp_write;
+    pNetwork->disconnect = iotx_net_tcp_disconnect;
+    pNetwork->connect = iotx_net_tcp_connect;
+
+    return 0;
+}
+#endif
+
 #endif
 
 

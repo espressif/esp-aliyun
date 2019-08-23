@@ -518,7 +518,11 @@ static int _http_send(httpclient_t *client, const char *url, int port, const cha
 
     if (0 == client->net.handle) {
         /* Establish connection if no. */
+        #ifdef SUPPORT_TCP
+        ret = iotx_net_tcp_init(&client->net, host, port, ca_crt);
+        #else
         ret = iotx_net_init(&client->net, host, port, ca_crt);
+        #endif
         if (0 != ret) {
             return ret;
         }

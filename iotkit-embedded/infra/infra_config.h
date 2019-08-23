@@ -43,6 +43,9 @@
 #define DEVICE_MODEL_SHADOW
 #define HAL_KV
 #define SUPPORT_TLS
+#if defined(SUPPORT_TLS) && CONFIG_SUPPORT_TCP
+#define SUPPORT_TCP
+#endif
 #define HAL_CRYPTO
 #define HAL_UDP
 //#define COAP_DTLS_SUPPORT

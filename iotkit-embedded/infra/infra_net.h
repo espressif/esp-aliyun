@@ -45,7 +45,9 @@ int utils_net_write(utils_network_pt pNetwork, const char *buffer, uint32_t len,
 int iotx_net_disconnect(utils_network_pt pNetwork);
 int iotx_net_connect(utils_network_pt pNetwork);
 int iotx_net_init(utils_network_pt pNetwork, const char *host, uint16_t port, const char *ca_crt);
-
+#ifdef SUPPORT_TCP
+int iotx_net_tcp_init(utils_network_pt pNetwork, const char *host, uint16_t port, const char *ca_crt);
+#endif
 #endif /* IOTX_COMMON_NET_H */
 
 

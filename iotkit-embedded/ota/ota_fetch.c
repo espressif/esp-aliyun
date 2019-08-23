@@ -60,7 +60,7 @@ int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
     h_odc->http_data.response_buf_len = buf_len;
     diff = h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len;
 
-#if !defined(SUPPORT_TLS)
+#if !defined(SUPPORT_TLS) || defined(SUPPORT_TCP)
     if (0 != httpclient_common(&h_odc->http, h_odc->url, 80, 0, HTTPCLIENT_GET, timeout_s * 1000,
                                &h_odc->http_data)) {
 #else
