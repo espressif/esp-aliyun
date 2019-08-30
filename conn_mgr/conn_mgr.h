@@ -31,6 +31,9 @@
 extern "C" {
 #endif
 
+#define HOTSPOT_AP "aha"
+#define ROUTER_AP "adha"
+
 /**
  * @brief register wifi event handler
  *
@@ -64,6 +67,15 @@ esp_err_t conn_mgr_reset_wifi_config(void);
  *     - others : fail
  */
 esp_err_t conn_mgr_set_wifi_config_ext(const uint8_t *ssid, size_t ssid_len, const uint8_t *password, size_t password_len);
+
+/**
+ * @brief get wifi configure information
+ * 
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
+ */
+esp_err_t conn_mgr_get_wifi_config(wifi_config_t *wifi_cfg);
 
 /**
  * @brief init the connection management module
