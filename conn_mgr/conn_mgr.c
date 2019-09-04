@@ -271,11 +271,6 @@ esp_err_t conn_mgr_start(void)
                 ret = false;
                 break;
             }
-
-            if (awss_check_reset() != 0) {
-                ret = false;
-                break;
-            }
         } while (0);
     } else {
         if (conn_mgr_wifi_connect() != ESP_OK) {
