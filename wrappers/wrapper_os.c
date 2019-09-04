@@ -256,7 +256,7 @@ int HAL_Timer_Start(void *timer, int ms)
     ms = (ms == 1) ? 10 : ms;
 #endif
 
-    if (ESP_OK == esp_timer_start_periodic((esp_timer_handle_t)timer, ms * 1000)) {
+    if (ESP_OK == esp_timer_start_periodic((esp_timer_handle_t)timer, (uint64_t)ms * 1000)) {
         return SUCCESS_RETURN;
     }
 
