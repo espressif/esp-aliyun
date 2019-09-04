@@ -63,7 +63,7 @@ menu "iotkit embedded"
                 Get the length of time scanned on each channel (`channel`), in milliseconds
     endmenu
 
-    menu "Aliyun linkkit netwoek config"
+    menu "Aliyun linkkit network config"
         config TCP_ESTABLISH_TIMEOUT_MS
             int "Device tcp connection timeout wait time milliseconds"
             range 0 100000
@@ -77,6 +77,14 @@ menu "iotkit embedded"
             default 10000
             help
                 Device tls connection timeout wait time milliseconds
+    endmenu
+
+    menu "Aliyun linkkit device model config"
+        config DEVICE_MODEL_GATEWAY
+            bool "Enable device model gateway"
+            default n
+            help
+                Select this option to enable device model gateway
     endmenu
 
 config HAL_SEM_MAX_COUNT
