@@ -84,9 +84,16 @@ static esp_err_t conn_mgr_wifi_connect(void)
 
 static esp_err_t conn_mgr_save_wifi_config(void)
 {
-    wifi_config_t wifi_config;
+    wifi_config_t wifi_config = {0};
 
     esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_config);
+
+    /* Do not save hotspot or router APs. */
+    if (strcmp((char *)(wifi_config.sta.ssid), HOTSPOT_AP) == 0 ||
+        strcmp((char *)(wifi_config.sta.ssid), ROUTER_AP) == 0) {
+        ESP_LOGI(TAG, "Do not save hotspot or router APs: %s", wifi_config.sta.ssid);
+        return ESP_FAIL;
+    }
 
     int ret = HAL_Kv_Set(STA_SSID_KEY, wifi_config.sta.ssid, sizeof(wifi_config.sta.ssid), 0);
 
@@ -230,6 +237,11 @@ esp_err_t conn_mgr_set_wifi_config_ext(const uint8_t *ssid, size_t ssid_len, con
     conn_mgr_save_wifi_config();
 
     return ESP_OK;
+}
+
+esp_err_t conn_mgr_get_wifi_config(wifi_config_t *wifi_cfg)
+{
+    return esp_wifi_get_config(ESP_IF_WIFI_STA, wifi_cfg);
 }
 
 esp_err_t conn_mgr_init(void)

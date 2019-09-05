@@ -21,6 +21,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -45,10 +47,14 @@ static esp_err_t wifi_event_handle(void *ctx, system_event_t *event)
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_GOT_IP:
             if (linkkit_started == false) {
-                xTaskCreate((void (*)(void *))linkkit_main, "lightbulb", 10240, NULL, 5, NULL);
-                linkkit_started = true;
+                wifi_config_t wifi_config = {0};
+                if (conn_mgr_get_wifi_config(&wifi_config) == ESP_OK &&
+                    strcmp((char *)(wifi_config.sta.ssid), HOTSPOT_AP) &&
+                    strcmp((char *)(wifi_config.sta.ssid), ROUTER_AP)) {
+                    xTaskCreate((void (*)(void *))linkkit_main, "lightbulb", 10240, NULL, 5, NULL);
+                    linkkit_started = true;
+                }
             }
-
             break;
 
         default:
