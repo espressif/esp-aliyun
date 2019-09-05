@@ -175,6 +175,14 @@ static void linkkit_event_monitor(int event)
     }
 }
 
+static void start_conn_mgr()
+{
+    iotx_event_regist_cb(linkkit_event_monitor);    // awss callback
+    conn_mgr_start();
+
+    vTaskDelete(NULL);
+}
+
 void app_main()
 {
     factory_restore_init();
@@ -184,9 +192,7 @@ void app_main()
     conn_mgr_init();
     conn_mgr_register_wifi_event(wifi_event_handle);
 
-    iotx_event_regist_cb(linkkit_event_monitor);    // awss callback
-
     IOT_SetLogLevel(IOT_LOG_INFO);
 
-    conn_mgr_start();
+    xTaskCreate((void (*)(void *))start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
 }
