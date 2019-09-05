@@ -36,9 +36,9 @@ $IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py --in
 ```
 如针对 esp8266 平台，请使用如下命令：
 ```
-$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py --input my_single_mfg_config.csv --output my_single_mfg.bin --size 0x4000 --version v1
+$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py --input my_single_mfg_config.csv --output my_single_mfg.bin --size 0x4000
 ```
-> 说明：esp8266 的 NVS 格式当前为 v1。
+> 说明：esp8266 的 NVS 格式当前为 v1, 默认已设置。
 
 可以使用 esptool 工具将生成的包含秘钥的 NVS 分区烧入对应的 sector，针对 example 中默认提供的 partitions，esp32 和 esp8266 将烧写到不同的分区，其中 esp32 的默认烧录地址为 0x210000，esp8266 的默认烧录地址为 0x100000。
 
@@ -49,7 +49,7 @@ $IDF_PATH/components/esptool_py/esptool/esptool.py write_flash 0x210000 my_singl
 
 针对 esp8266：
 ```
-$IDF_PATH/components/esptool_py/esptool/esptool.py write_flash 0x100000 my_single_mfg.bin
+$IDF_PATH/components/esptool_py/esptool/esptool.py --port /dev/ttyUSB0 write_flash 0x100000 my_single_mfg.bin
 ```
 
 > 注，当前 esp32 默认使用 4MB 的模组，esp8266 默认使用 2MB 的模组，如使用其他大小的 Flash，请适当调整 partitions 分区表，并确认烧写地址。
@@ -73,12 +73,12 @@ id,DeviceName,DeviceSecret,ProductKey,ProductSecret
 
 针对 esp32：
 ```
-$IDF_PATH/tools/mfg_gen.py --conf multipule_mfg_config.csv --values my_multipule_mfg_values.csv --prefix Fan --size 0x4000
+$IDF_PATH/tools/mass_mfg/mfg_gen.py --conf multipule_mfg_config.csv --values my_multipule_mfg_values.csv --prefix Fan --size 0x4000
 ```
 
 针对 esp8266：
 ```
-$IDF_PATH/tools/mfg_gen.py --conf multipule_mfg_config.csv --values my_multipule_mfg_values.csv --prefix Fan --size 0x4000 --version v1
+$IDF_PATH/tools/mass_mfg/mfg_gen.py --conf multipule_mfg_config.csv --values my_multipule_mfg_values.csv --prefix Fan --size 0x4000 --version v1
 ```
 
 其中 --prefix 为生成的批量文件的前缀名称，可以修改为所需要的产品名称。执行完成后，会在当前目录下生成一 bin 目录，里面保持了所有可用于量产的 NVS 分区 bin。
