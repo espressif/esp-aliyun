@@ -64,6 +64,12 @@ menu "iotkit embedded"
     endmenu
 
     menu "Aliyun linkkit network config"
+        config SUPPORT_TCP
+            bool "Enable tcp connection"
+            default y
+            help
+                Select this option to enable tcp connection
+
         config TCP_ESTABLISH_TIMEOUT_MS
             int "Device tcp connection timeout wait time milliseconds"
             range 0 100000
