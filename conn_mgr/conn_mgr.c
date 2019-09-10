@@ -163,6 +163,7 @@ static esp_err_t conn_mgr_obtain_time(void)
 
 static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *event)
 {
+    system_event_info_t *info = &event->event_info;
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_GOT_IP:
             conn_mgr_save_wifi_config();
@@ -172,7 +173,14 @@ static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *eve
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
-            conn_mgr_wifi_connect();
+            ESP_LOGE(TAG, "Disconnect reason : %d", info->disconnected.reason);
+#ifdef CONFIG_IDF_TARGET_ESP8266
+            if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
+                /*Switch to 802.11 bgn mode */
+                esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
+            }
+#endif
+            esp_wifi_connect();
             break;
 
         default:
