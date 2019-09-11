@@ -372,7 +372,7 @@ static void user_deviceinfo_delete(void)
     EXAMPLE_TRACE("Device Info Delete Message ID: %d", res);
 }
 
-int linkkit_main(void *paras)
+static int linkkit_thread(void *paras)
 {
     int res = 0;
     iotx_linkkit_dev_meta_info_t master_meta_info;
@@ -452,5 +452,12 @@ int linkkit_main(void *paras)
     IOT_DumpMemoryStats(IOT_LOG_DEBUG);
     IOT_SetLogLevel(IOT_LOG_NONE);
     return 0;
+}
+
+void linkkit_main(void *paras)
+{
+    while (1) {
+        linkkit_thread(NULL);
+    }
 }
 #endif

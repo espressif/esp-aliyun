@@ -24,6 +24,6 @@
 #ifndef _LINKKIT_SOLO_H__
 #define _LINKKIT_SOLO_H__
 
-int linkkit_main(void *paras);
+void linkkit_main(void *paras);
 
 #endif
