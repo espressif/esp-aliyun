@@ -66,7 +66,7 @@ menu "iotkit embedded"
     menu "Aliyun linkkit network config"
         config SUPPORT_TCP
             bool "Enable tcp connection"
-            default y
+            default n
             help
                 Select this option to enable tcp connection
 
