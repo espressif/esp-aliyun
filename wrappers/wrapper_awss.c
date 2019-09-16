@@ -102,6 +102,7 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
     ESP_ERROR_CHECK(esp_wifi_set_channel(6, 0));
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(HAL_Awss_Monitor_callback));
 
@@ -109,8 +110,6 @@ void HAL_Awss_Open_Monitor(_IN_ awss_recv_80211_frame_cb_t cb)
     extern void esp_wifi_set_promiscuous_data_len(uint32_t);
     esp_wifi_set_promiscuous_data_len(512);
 #endif
-
-    ESP_ERROR_CHECK(esp_wifi_set_promiscuous(true));
 
     ESP_LOGI(TAG, "Open monitor mode");
 }
