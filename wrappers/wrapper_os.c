@@ -27,11 +27,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/timers.h"
 
 #include "pthread.h"
 
 #include "esp_log.h"
-#include "esp_timer.h"
 
 static const char *TAG = "os";
 
@@ -229,21 +229,19 @@ void HAL_ThreadDetach(void *thread_handle)
 
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
 {
-    esp_timer_handle_t timer_handle = NULL;
-    esp_timer_create_args_t timer_args = {
-        .callback = func,
-        .arg = user_data,
-        .name = name
-    };
-
-    esp_timer_create(&timer_args, &timer_handle);
+    TimerHandle_t timer_handle = NULL;
+    timer_handle = xTimerCreate(name, portMAX_DELAY, pdTRUE, NULL, (TimerCallbackFunction_t)func);
 
     return (void *)timer_handle;
 }
 
 int HAL_Timer_Delete(void *timer)
 {
-    if (ESP_OK == esp_timer_delete((esp_timer_handle_t)timer)) {
+    if (!timer) {
+        return FAIL_RETURN;
+    }
+
+    if (pdTRUE == xTimerDelete((TimerHandle_t)timer, portMAX_DELAY)) {
         return SUCCESS_RETURN;
     }
 
@@ -252,20 +250,29 @@ int HAL_Timer_Delete(void *timer)
 
 int HAL_Timer_Start(void *timer, int ms)
 {
-#ifdef CONFIG_IDF_TARGET_ESP8266
-    ms = (ms == 1) ? 10 : ms;
-#endif
-
-    if (ESP_OK == esp_timer_start_periodic((esp_timer_handle_t)timer, (uint64_t)ms * 1000)) {
-        return SUCCESS_RETURN;
+    if (!timer) {
+        return FAIL_RETURN;
     }
 
-    return FAIL_RETURN;
+    uint32_t ticks = ms / portTICK_PERIOD_MS;
+    if (ticks == 0) {
+        ticks = 1;
+    }
+
+    if (xTimerStart((TimerHandle_t)timer, ticks) != pdTRUE) {
+        return FAIL_RETURN;
+    }
+
+    return SUCCESS_RETURN;
 }
 
 int HAL_Timer_Stop(void *timer)
 {
-    if (ESP_OK == esp_timer_stop((esp_timer_handle_t)timer)) {
+    if (!timer) {
+        return FAIL_RETURN;
+    }
+
+    if (pdTRUE == xTimerStop((TimerHandle_t)timer, portMAX_DELAY)) {
         return SUCCESS_RETURN;
     }
 
