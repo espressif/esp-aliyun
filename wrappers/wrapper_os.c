@@ -230,7 +230,7 @@ void HAL_ThreadDetach(void *thread_handle)
 void *HAL_Timer_Create(const char *name, void (*func)(void *), void *user_data)
 {
     TimerHandle_t timer_handle = NULL;
-    timer_handle = xTimerCreate(name, portMAX_DELAY, pdTRUE, NULL, (TimerCallbackFunction_t)func);
+    timer_handle = xTimerCreate(name, portMAX_DELAY, pdFALSE, NULL, (TimerCallbackFunction_t)func);
 
     return (void *)timer_handle;
 }
@@ -259,7 +259,10 @@ int HAL_Timer_Start(void *timer, int ms)
         ticks = 1;
     }
 
-    if (xTimerStart((TimerHandle_t)timer, ticks) != pdTRUE) {
+    if (xTimerChangePeriod(timer, ticks, portMAX_DELAY) != pdTRUE) {
+        return FAIL_RETURN;
+    }
+    if (xTimerStart((TimerHandle_t)timer, portMAX_DELAY) != pdTRUE) {
         return FAIL_RETURN;
     }
 
