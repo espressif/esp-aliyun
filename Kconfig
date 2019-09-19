@@ -1,36 +1,12 @@
 menu "iotkit embedded"
 
-    menu "Aliyun linkkit device key"
+    menu "Aliyun linkkit device version"
 
         config LINKKIT_FIRMWARE_VERSION
             string "Device version"
             default "0.0.1"
             help
                 aliyun linkkit device version
-
-        config LINKKIT_PRODUCT_KEY
-            string "Product key"
-            default "xxxx"
-            help
-               aliyun linkkit product key.
-
-        config LINKKIT_PRODUCT_SECRET
-            string "Product secret"
-            default "xxxx"
-            help
-               aliyun linkkit product secret.
-
-        config LINKKIT_DEVICE_NAME
-            string "Device name"
-            default "xxxx"
-            help
-                aliyun linkkit device name.
-
-        config LINKKIT_DEVICE_SECRET
-            string "Device secret"
-            default "xxxx"
-            help
-                aliyun linkkit device secret.
     endmenu
 
     menu "Aliyun linkkit awss config"
