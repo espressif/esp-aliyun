@@ -155,12 +155,20 @@ uintptr_t HAL_SSL_Establish(const char *host, uint16_t port, const char *ca_crt,
     };
 
 #ifdef CONFIG_IDF_TARGET_ESP8266
+#if ESP_IDF_VERSION >= 0x30300
+    esp_set_cpu_freq(ESP_CPU_FREQ_160M);
+#else
     rtc_clk_cpu_freq_set(RTC_CPU_FREQ_160M);
+#endif
 #endif
     struct esp_tls *tls = esp_tls_conn_new(host, strlen(host), port, &cfg);
 
 #ifdef CONFIG_IDF_TARGET_ESP8266
+#if ESP_IDF_VERSION >= 0x30300
+    esp_set_cpu_freq(ESP_CPU_FREQ_80M);
+#else
     rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
+#endif
 #endif
 
     return (uintptr_t)tls;

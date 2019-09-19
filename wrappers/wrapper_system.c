@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_system.h"
 
 #include "tcpip_adapter.h"
@@ -185,7 +185,7 @@ void HAL_SleepMs(uint32_t ms)
  */
 uint64_t HAL_UptimeMs(void)
 {
-    return esp_log_timestamp();
+    return (esp_timer_get_time()/1000);
 }
 
 /**
