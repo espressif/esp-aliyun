@@ -31,6 +31,9 @@
 
 #include "esp_log.h"
 #include "esp_wifi.h"
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#include "esp_task_wdt.h"
+#endif
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -57,6 +60,8 @@ static void HAL_Awss_Monitor_callback(void *recv_buf, wifi_promiscuous_pkt_type_
     uint8_t total_num = 1;
     uint16_t seq_buf;
     len = pkt->rx_ctrl.sig_mode ? pkt->rx_ctrl.HT_length : pkt->rx_ctrl.legacy_length;
+
+    esp_task_wdt_reset();
 
     if (pkt->rx_ctrl.aggregation) {
         total_num = pkt->rx_ctrl.ampdu_cnt;
