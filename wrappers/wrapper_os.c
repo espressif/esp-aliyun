@@ -35,6 +35,31 @@
 
 static const char *TAG = "os";
 
+#ifdef CONFIG_IDF_TARGET_ESP8266
+#if __has_include("esp_idf_version.h")
+#include "esp_idf_version.h"
+#else
+/** Major version number (X.x.x) */
+#define ESP_IDF_VERSION_MAJOR   3
+/** Minor version number (x.X.x) */
+#define ESP_IDF_VERSION_MINOR   2
+/** Patch version number (x.x.X) */
+#define ESP_IDF_VERSION_PATCH   0
+#define ESP_IDF_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
+#define ESP_IDF_VERSION  ESP_IDF_VERSION_VAL(ESP_IDF_VERSION_MAJOR, \
+                                             ESP_IDF_VERSION_MINOR, \
+                                             ESP_IDF_VERSION_PATCH)
+#endif
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(3, 3, 0)
+// notes: pthread_exit has already defined on ESP-IDF
+void pthread_exit(void *value_ptr)
+{
+    ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
+}
+#endif
+#endif
+
 /**
  * @brief Create a mutex.
  *
@@ -209,11 +234,7 @@ int HAL_ThreadCreate(
 void HAL_ThreadDelete(void *thread_handle)
 {
     if (NULL == thread_handle) {
-#ifdef CONFIG_IDF_TARGET_ESP8266
-        ESP_LOGE(TAG, "%s: esp82666 not supported!", __FUNCTION__);
-#else
         pthread_exit(0);
-#endif
     } else {
         /*main thread delete child thread*/
         pthread_cancel((pthread_t) thread_handle);
