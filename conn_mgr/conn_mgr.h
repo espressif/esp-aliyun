@@ -98,6 +98,18 @@ esp_err_t conn_mgr_init(void);
  */
 esp_err_t conn_mgr_start(void);
 
+/**
+ * @brief stop the connection management module
+ * 
+ * If the device is configured, the device keep connect to the router which is configured.
+ * If the device is not configured, the device will stop awss service.
+ * 
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
+ */
+esp_err_t conn_mgr_stop(void);
+
 #ifdef __cplusplus
 }
 #endif
