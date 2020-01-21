@@ -300,3 +300,21 @@ esp_err_t conn_mgr_start(void)
 
     return ret == true ? ESP_OK : ESP_FAIL;
 }
+
+esp_err_t conn_mgr_stop(void)
+{
+    bool ret = true;
+    bool configured = false;
+
+    // Let's find out if the device is configured.
+    if (conn_mgr_is_configured(&configured) != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    // If the device is not yet configured, stop awss service.
+    if (!configured && awss_stop() != 0) {
+        ret = false;
+    }
+
+    return ret == true ? ESP_OK : ESP_FAIL;
+}
