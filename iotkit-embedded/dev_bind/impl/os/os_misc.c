@@ -99,7 +99,7 @@ char *os_wifi_str2mac(char mac_str[OS_MAC_LEN], char mac[OS_ETH_ALEN])
     if (ptr == NULL)
         return NULL;
 
-    while (isxdigit(*ptr) && i < OS_ETH_ALEN) {
+    while (isxdigit((int)*ptr) && i < OS_ETH_ALEN) {
         mac_addr[i ++] = (uint8_t)strtol(ptr, &ptr, 16);
         ++ ptr;
     }
