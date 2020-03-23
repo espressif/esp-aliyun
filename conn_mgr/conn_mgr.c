@@ -47,9 +47,6 @@
 
 #include "conn_mgr.h"
 
-#define STA_SSID_KEY             "ssid"
-#define STA_PASSWORD_KEY         "pswd"
-
 static const char *TAG = "conn_mgr";
 
 static system_event_cb_t hal_wifi_system_cb;
@@ -273,10 +270,19 @@ esp_err_t conn_mgr_start(void)
 {
     bool ret = true;
     bool configured = false;
+    uint8_t mode = 0;
+    int mode_len = sizeof(uint8_t);
+    conn_sc_mode_t awss_mode = CONN_SC_ZERO_MODE;
 
     // Let's find out if the device is configured.
     if (conn_mgr_is_configured(&configured) != ESP_OK) {
         return ESP_FAIL;
+    }
+
+    // Get SC mode and decide to start which awss service
+    HAL_Kv_Get(SC_MODE, &mode, &mode_len);
+    if (mode_len && mode == CONN_SOFTAP_MODE) {
+        awss_mode = CONN_SOFTAP_MODE;
     }
 
     // If the device is not yet configured, start awss service.
@@ -286,10 +292,16 @@ esp_err_t conn_mgr_start(void)
                 ret = false;
                 break;
             }
-
-            if (awss_start() != 0) {
-                ret = false;
-                break;
+            if (awss_mode == CONN_SOFTAP_MODE) {
+                if (awss_dev_ap_start() != 0) {
+                    ret = false;
+                    break;
+                }
+            } else {
+                if (awss_start() != 0) {
+                    ret = false;
+                    break;
+                }
             }
         } while (0);
     } else {
@@ -305,16 +317,75 @@ esp_err_t conn_mgr_stop(void)
 {
     bool ret = true;
     bool configured = false;
+    uint8_t mode = 0;
+    int mode_len = sizeof(uint8_t);
+    conn_sc_mode_t awss_mode = CONN_SC_ZERO_MODE;
 
     // Let's find out if the device is configured.
     if (conn_mgr_is_configured(&configured) != ESP_OK) {
         return ESP_FAIL;
     }
 
+    // Get SC mode and decide to start which awss service
+    HAL_Kv_Get(SC_MODE, &mode, &mode_len);
+    if (mode_len && mode == CONN_SOFTAP_MODE) {
+        awss_mode = CONN_SOFTAP_MODE;
+    }
+
     // If the device is not yet configured, stop awss service.
-    if (!configured && awss_stop() != 0) {
-        ret = false;
+    if (!configured) {
+        if (awss_mode == CONN_SOFTAP_MODE) {
+            if (awss_dev_ap_stop() != 0) {
+                ret = false;
+            }
+        } else {
+            if (awss_stop() != 0) {
+                ret = false;
+            }
+        }
     }
 
     return ret == true ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t conn_mgr_set_ap_ssid(uint8_t *ssid, int len)
+{
+    int ret = ESP_FAIL;
+    uint8_t ssid_kv[32] = {0};
+    int len_kv = 32;
+
+    if (!ssid || !len) {
+        ESP_LOGI(TAG, "input ssid and len error");
+        return ret;
+    }
+    ret = HAL_Kv_Get(AP_SSID_KEY, ssid_kv, &len_kv);
+    if (ret == ESP_OK && len_kv == len) {
+        if (!memcmp(ssid, ssid_kv, len)) {
+            return ESP_OK;
+        }
+    }
+
+    ret = HAL_Kv_Set(AP_SSID_KEY, ssid, len, 0);
+    ESP_LOGI(TAG, "%s %s", __FUNCTION__, (ret == ESP_OK) ? "success" : "fail");
+
+    return ret;
+}
+
+esp_err_t conn_mgr_set_sc_mode(uint8_t mode)
+{
+    int ret = ESP_FAIL;
+    uint8_t mode_kv = 0;
+    int len_kv = sizeof(uint8_t);
+
+    ret = HAL_Kv_Get(SC_MODE, &mode_kv, &len_kv);
+    if (ret == ESP_OK) {
+        if (mode == mode_kv) {
+            return ESP_OK;
+        }
+    }
+
+    ret = HAL_Kv_Set(SC_MODE, &mode, sizeof(uint8_t), 0);
+    ESP_LOGI(TAG, "%s %s", __FUNCTION__, (ret == ESP_OK) ? "success" : "fail");
+
+    return ret;
 }
