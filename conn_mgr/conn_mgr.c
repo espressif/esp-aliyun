@@ -38,9 +38,7 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 
-#if CONFIG_SSL_USING_WOLFSSL
 #include "lwip/apps/sntp.h"
-#endif
 
 #include "wifi_provision_api.h"
 #include "dm_wrapper.h"
@@ -115,7 +113,6 @@ static esp_err_t conn_mgr_save_wifi_config(void)
     return ESP_OK;
 }
 
-#if CONFIG_SSL_USING_WOLFSSL
 static esp_err_t conn_mgr_obtain_time(void)
 {
     static bool get_time_flag = false;
@@ -159,7 +156,6 @@ static esp_err_t conn_mgr_obtain_time(void)
 
     return ESP_OK;
 }
-#endif
 
 static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *event)
 {
@@ -167,9 +163,7 @@ static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *eve
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_GOT_IP:
             conn_mgr_save_wifi_config();
-            #if CONFIG_SSL_USING_WOLFSSL
             conn_mgr_obtain_time();
-            #endif
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
