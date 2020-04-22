@@ -33,6 +33,15 @@ extern "C" {
 
 #define HOTSPOT_AP "aha"
 #define ROUTER_AP "adha"
+#define STA_SSID_KEY             "stassid"
+#define STA_PASSWORD_KEY         "pswd"
+#define AP_SSID_KEY              CONFIG_AP_SSID_KEY
+#define SC_MODE                  "scmode"
+
+typedef enum {
+    CONN_SC_ZERO_MODE = 1,
+    CONN_SOFTAP_MODE  = 2,
+} conn_sc_mode_t;
 
 /**
  * @brief register wifi event handler
@@ -110,6 +119,30 @@ esp_err_t conn_mgr_start(void);
  */
 esp_err_t conn_mgr_stop(void);
 
+/**
+ * @brief set softap ssid to KV
+ *
+ * @param ssid Pointer to the softap SSID string
+ * @param len Length of the above SSID
+ *
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
+ */
+esp_err_t conn_mgr_set_ap_ssid(uint8_t *ssid, int len);
+
+/**
+ * @brief set wifi distribution network mode to KV
+ *
+ * If mode is 1, means support smartconfig and zero-config
+ * If mode is 2, means support softap config
+ * @param mode Value of the sc mode
+ *
+ * @return
+ *     - ESP_OK : OK
+ *     - others : fail
+ */
+esp_err_t conn_mgr_set_sc_mode(uint8_t mode);
 #ifdef __cplusplus
 }
 #endif

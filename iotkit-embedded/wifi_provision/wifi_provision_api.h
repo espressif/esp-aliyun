@@ -78,6 +78,25 @@ DLL_IOT_API int awss_report_reset(void);
  */
 DLL_IOT_API int awss_stop_report_reset(void);
 
+/**
+ * @brief   start awss dev softap mode.
+ *
+ * @retval  -1 : failure
+ * @retval  0 : sucess
+ * @note
+ *      Start softap mode to get wifi ssid and password.
+ */
+DLL_IOT_API int awss_dev_ap_start(void);
+
+/**
+ * @brief   stop awss dev softap mode.
+ *
+ * @retval  -1 : failure
+ * @retval  0 : sucess
+ * @note
+ *      Stop softap mode.
+ */
+DLL_IOT_API int awss_dev_ap_stop(void);
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
 }
 #endif

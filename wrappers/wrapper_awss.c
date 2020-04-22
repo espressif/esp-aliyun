@@ -154,7 +154,7 @@ int HAL_Awss_Connect_Ap(
         memcpy(wifi_config.sta.password, passwd, HAL_MAX_PASSWD_LEN - 1);
     }
 
-    if (bssid != NULL) {
+    if (bssid != NULL && strlen((char *)bssid)) {
         memcpy(wifi_config.sta.bssid, bssid, ETH_ALEN);
         wifi_config.sta.bssid_set = true;
     }
@@ -166,6 +166,7 @@ int HAL_Awss_Connect_Ap(
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
 
     while (connect_ms < connection_timeout_ms) {
@@ -195,12 +196,58 @@ int HAL_Awss_Get_Timeout_Interval_Ms(void)
 
 int HAL_Awss_Open_Ap(const char *ssid, const char *passwd, int beacon_interval, int hide)
 {
-    return (int)1;
+    if (!ssid || !passwd) {
+        ESP_LOGI(TAG, "ssid or passwd is NULL");
+        return FAIL_RETURN;
+    }
+
+    wifi_config_t wifi_config = {
+        .ap = {
+            .max_connection = 5,
+            .beacon_interval = beacon_interval,
+            .ssid_hidden = hide,
+        },
+    };
+#ifdef CONFIG_HAL_USE_CUSTOMER_AP_SSID
+    uint8_t ssid_kv[32] = {0};
+    int len_kv = 32;
+    #define AP_SSID_KEY CONFIG_AP_SSID_KEY
+    int ret = HAL_Kv_Get(AP_SSID_KEY, ssid_kv, &len_kv);
+    if (ret == ESP_OK) {
+        memcpy(wifi_config.ap.ssid, ssid_kv, len_kv);
+        wifi_config.ap.ssid_len = len_kv;
+    } else {
+        ESP_LOGI(TAG, "Can't get customer softap ssid, so use default");
+        strncpy((char *) wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
+        wifi_config.ap.ssid_len = strlen(ssid);
+    }
+#else
+    strncpy((char *) wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
+    wifi_config.ap.ssid_len = strlen(ssid);
+#endif
+    if (strlen(passwd) == 0) {
+        memset(wifi_config.ap.password, 0, sizeof(wifi_config.ap.password));
+        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    } else {
+        strncpy((char *) wifi_config.ap.password, passwd, sizeof(wifi_config.ap.password));
+        wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    }
+    ESP_LOGI(TAG, "ssid: %s", (char *) wifi_config.ap.ssid);
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    return SUCCESS_RETURN;
 }
 
 int HAL_Awss_Close_Ap(void)
 {
-    return (int)1;
+    wifi_mode_t mode;
+    ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));
+    if (mode == WIFI_MODE_AP) {
+        ESP_ERROR_CHECK(esp_wifi_stop());
+    }
+    return SUCCESS_RETURN;
 }
 
 void HAL_Awss_Switch_Channel(char primary_channel, char secondary_channel, uint8_t bssid[ETH_ALEN])

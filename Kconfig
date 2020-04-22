@@ -88,5 +88,14 @@ config HAL_TLS_HANDSHAKE_TIMEOUT
     range 0 65535
     help
         Default TLS handshake timeout to host in seconds
-
+config HAL_USE_CUSTOMER_AP_SSID
+    bool "Enable use customer softap SSID"
+    default n
+    help
+        Select this option to enable use customer softap SSID
+config AP_SSID_KEY
+    string "AP SSID KV Key value"
+    default "apssid"
+    help
+        The KV key value which store AP SSID
 endmenu
