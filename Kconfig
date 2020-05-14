@@ -69,6 +69,17 @@ menu "iotkit embedded"
                 Select this option to enable device model gateway
     endmenu
 
+    menu "Aliyun linkkit mqtt config"
+        config MQTT_DIRECT
+            bool "MQTT DIRECT"
+            default y
+            help
+                Directly connect MQTT server without perform HTTP authenticate to another HTTP server ahead
+
+                Switching to "y" leads to connect MQTT server directly and MQTT_DIRECT included into CFLAGS
+                Switching to "n" leads to legacy authenticate mode: connnect HTTP server first, then connect MQTT server afterwards
+    endmenu
+
 config HAL_SEM_MAX_COUNT
     int "The maximum count value that can be reached of the semaphore"
     default 255

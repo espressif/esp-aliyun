@@ -417,7 +417,12 @@ static int linkkit_thread(void *paras)
     IOT_RegisterCallback(ITE_COTA, user_cota_event_handler);
     IOT_RegisterCallback(ITE_MQTT_CONNECT_SUCC, user_mqtt_connect_succ_event_handler);
 
+#if CONFIG_MQTT_DIRECT
     domain_type = IOTX_CLOUD_REGION_SHANGHAI;
+#else
+    domain_type = IOTX_CLOUD_REGION_SINGAPORE;
+#endif
+
     IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);
 
     /* Choose Login Method */
