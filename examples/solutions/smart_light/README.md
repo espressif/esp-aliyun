@@ -133,3 +133,38 @@ iotkit-embedded 目前没有设置软重启操作, 可以手动按模组重启�
 
 如果您之前通过云智能 APP 配网, 天猫精灵配网成功后, 云智能 APP 将不再显示设备. 如果继续通过云智能 APP 配网, APP 会配网失败, 显示 "设备添加失败, 设备已被管理员绑定, 请联系管理员解绑或将设备分享给您". 
 > 在天猫精灵 APP 删除设备, 云智能 APP 再进行配网可以配置成功并显示设备.
+
+#### 14.国际站设备开发
+##### 14.1 创建国际站产品
+在阿里云 [生活物联网平台-国际站](https://living-global.aliyun.com/#/) 创建产品, 参考[全球化服务文档](https://g.alicdn.com/aic/ilop-docs/2018.10.35/international.html)和[创建产品文档](https://living.aliyun.com/doc#readygo.html).  
+同上述阿里云平台部署, 新增测试设备后获取设备的`三元组`, 参考 [量产说明](../../../config/mass_mfg/README.md) 文档烧录三元组到模组 NVS 分区.
+##### 14.2 海外版 APP
+手机从[阿里云官网](https://living.aliyun.com/doc#muti-app.html) 下载 `云智能` 公版 APP, 海外用户版.  
+如果已下载过公版 APP(国内用户版), 退出登录, 重新注册.
+注册时选择其他非“中国大陆”的地区，都认为是海外的 APP 账号，会默认连接国际站的服务器。  
+目前在中国内地之外的国家和地区（包括港澳台地区）支持3个region：新加坡、美国和德国。中国内地之外的设备激活联网时，将统一连接到新加坡激活中心。在设备绑定时，平台将根据 App 用户所在区域，自动将设备切换到相应的region（示例如下）。
+
+ - 示例一：App用户注册时选择的国家为美国，平台会将该用户待绑定的设备切换到美国的服务器。
+ - 示例二：App用户注册时选择的国家为欧洲国家，平台会将该用户待绑定的设备切换到德国的服务器。
+ - 示例三：App用户注册时选择的国家为东南亚国家，设备连接新加坡服务器，此时无需切换region。
+##### 14.3 国际版固件设置
+参考[国际站设备开发](https://help.aliyun.com/document_detail/138889.html).设备端固件需要修改以下配置来支持统一连接到新加坡激活中心。  
+执行
+```
+ make menuconfig
+```
+选择 Componnet config -> iotkit embedded -> Aliyun linkkit mqtt config -> 取消选择 MQTT DIRECT.  
+配置生效后会修改以下两个配置.
+- 关闭 MQTT 直连功能, 打开 MQTT 预认证功能.
+- 设置 linkkit_solo.c 中的 domain_type = IOTX_CLOUD_REGION_SINGAPORE;
+
+##### 14.4 国际站设备运行
+编译下载固件后, 使设备重新进入配网状态, APP 扫描 14.1 步骤中生成的配网二维码. 如果设备是第一次配网, 连网成功后连接新加坡服务器:  
+![](_static/p-se.png)  
+手机 APP 端显示:  
+![](_static/p22.jpg)  
+重启设备, 由于本示例中 APP 注册时选择的地区是美国, 设备连接美国服务器:  
+![](_static/p-us.png)  
+手机 APP 端显示产品状态:  
+![](_static/p23.jpg)  
+![](_static/p24.jpg)  
