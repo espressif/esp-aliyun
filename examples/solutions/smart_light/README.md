@@ -161,10 +161,15 @@ iotkit-embedded 目前没有设置软重启操作, 可以手动按模组重启�
 ##### 14.4 国际站设备运行
 编译下载固件后, 使设备重新进入配网状态, APP 扫描 14.1 步骤中生成的配网二维码. 如果设备是第一次配网, 连网成功后连接新加坡服务器:  
 ![](_static/p-se.png)  
-手机 APP 端显示:  
-![](_static/p22.jpg)  
-重启设备, 由于本示例中 APP 注册时选择的地区是美国, 设备连接美国服务器:  
+订阅 MQTT REDIRECT Topic:   
+![](_static/p-sub.png)  
+收到 MQTT REDIRECT Topic 后自动重启设备:  
+![](_static/p-redirect.png)  
+设备重启后, 由于本示例中 APP 注册时选择的地区是美国, 设备连接美国服务器:  
 ![](_static/p-us.png)  
-手机 APP 端显示产品状态:  
+手机 APP 端显示:  
 ![](_static/p23.jpg)  
+点击"完成":  
+![](_static/p22.jpg)  
+稍等片刻后, 手机 APP 端显示产品状态, 此时可以通过手机控制设备:  
 ![](_static/p24.jpg)  
