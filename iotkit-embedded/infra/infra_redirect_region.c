@@ -1,16 +1,18 @@
+#include "infra_config.h"
+
 #ifdef MQTT_COMM_ENABLED
 
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
-#include "iot_import.h"
-#include "iot_export.h"
+#include "infra_compat.h"
 
-#include "iotx_utils.h"
-#include "iotx_log.h"
-#include "string_utils.h"
+#include "infra_json_parser.h"
 #include "iotx_mqtt_config.h"
-#include "iotx_system_internal.h"
+#include "mqtt_api.h"
+#include "coap_api.h"
+#include "infra_redirect_region.h"
 
 static iotx_conn_info_t     iotx_redir_info = {0, 0, NULL, NULL, NULL, NULL, NULL};
 static int redirect_region_flag = 0;
@@ -41,6 +43,8 @@ static int redirect_region_retry_cnt = 0;
 
 #define PUB_DATA_STR "{\"id\":%d,\"code\":%d,\"data\":{}}"
 
+#ifdef INFRA_LOG
+#include "infra_log.h"
 #define redirect_err(...) log_err("redirect", __VA_ARGS__)
 #define redirect_warn(...) log_warning("redirect", __VA_ARGS__)
 //#ifdef REDIRECT_DEBUG
@@ -48,6 +52,30 @@ static int redirect_region_retry_cnt = 0;
 // #else
 // #define redirect_info(...)
 // #endif
+#else
+#define redirect_err(...)    do{HAL_Printf(__VA_ARGS__);HAL_Printf("\r\n");}while(0)
+#define redirect_warn(...)    do{HAL_Printf(__VA_ARGS__);HAL_Printf("\r\n");}while(0)
+#define redirect_info(...)    do{HAL_Printf(__VA_ARGS__);HAL_Printf("\r\n");}while(0)
+#endif
+
+void *HAL_Malloc(uint32_t size);
+void HAL_Free(void *ptr);
+
+#ifdef INFRA_MEM_STATS
+    #include "infra_mem_stats.h"
+    #define REDIRECT_MALLOC(size) LITE_malloc(size, MEM_MAGIC, "infra_redirect")
+    #define REDIRECT_FREE(ptr)    LITE_free(ptr)
+#else
+    #define REDIRECT_MALLOC(size) HAL_Malloc(size)
+    #define REDIRECT_FREE(ptr)    {HAL_Free((void *)ptr);ptr = NULL;}
+#endif
+
+#define MEM_MAGIC                       (0x1234)
+
+int HAL_GetProductKey(char *product_key);
+int HAL_GetProductSecret(char *product_secret);
+int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN]);
+int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN]);
 
 enum _response_code
 {
@@ -61,21 +89,35 @@ iotx_conn_info_pt iotx_redirect_info_get(void)
     return &iotx_redir_info;
 }
 
+int iotx_device_info_get(iotx_device_info_t *device_info)
+{
+    if (device_info == NULL) {
+        return -1;
+    }
+    memset(device_info, 0x0, sizeof(iotx_device_info_t));
+    HAL_GetProductKey(device_info->product_key);
+    HAL_GetDeviceName(device_info->device_name);
+    HAL_GetDeviceSecret(device_info->device_secret);
+    // HAL_GetDeviceID(device_info->device_id);
+
+    return 0;
+}
+
 void iotx_redirect_info_release(void)
 {
     redirect_region_flag = 0;
 
     if (iotx_redir_info.host_name != NULL) {
-        LITE_free(iotx_redir_info.host_name);
+        REDIRECT_FREE(iotx_redir_info.host_name);
     }
     if (iotx_redir_info.username != NULL) {
-        LITE_free(iotx_redir_info.username);
+        REDIRECT_FREE(iotx_redir_info.username);
     }
     if (iotx_redir_info.password != NULL) {
-        LITE_free(iotx_redir_info.password);
+        REDIRECT_FREE(iotx_redir_info.password);
     }
     if (iotx_redir_info.client_id != NULL) {
-        LITE_free(iotx_redir_info.client_id);
+        REDIRECT_FREE(iotx_redir_info.client_id);
     }
     memset(&iotx_redir_info, 0, sizeof(iotx_redir_info));
 }
@@ -216,7 +258,7 @@ static void redirect_msg_cb(void *pcontext, void *pclient, iotx_mqtt_event_msg_p
     id = atoi(pvalue);
     redirect_info("id=%d", id);
     
-    LITE_free(pvalue);
+    REDIRECT_FREE(pvalue);
 
     pvalue = LITE_json_value_of(REDIRECT_MSG_IOTID, payload, MEM_MAGIC,"redirect");
     if (!pvalue){
@@ -255,7 +297,7 @@ static void redirect_msg_cb(void *pcontext, void *pclient, iotx_mqtt_event_msg_p
     strcpy(port_str, pvalue);
     pvalue = NULL;
     conn->port = atoi(port_str);
-    LITE_free(pvalue);
+    REDIRECT_FREE(pvalue);
     pvalue = NULL;
 
     iotx_redirect_set_flag(1);
@@ -286,7 +328,7 @@ int iotx_redirect_region_subscribe(void)
         goto ERROR;
     }
 
-    p_topic = LITE_malloc(TOPIC_LENGTH);
+    p_topic = REDIRECT_MALLOC(TOPIC_LENGTH);
     if (!p_topic){
         redirect_err("no mem");
         goto ERROR;
@@ -306,7 +348,7 @@ int iotx_redirect_region_subscribe(void)
 
 ERROR:
     if (p_topic){
-        LITE_free(p_topic);
+        REDIRECT_FREE(p_topic);
     }
 
     iotx_redirect_info_release();

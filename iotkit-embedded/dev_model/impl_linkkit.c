@@ -24,6 +24,8 @@
     #include "dev_bind_api.h"
 #endif
 
+void HAL_Reboot();
+
 #define IOTX_LINKKIT_KEY_ID          "id"
 #define IOTX_LINKKIT_KEY_CODE        "code"
 #define IOTX_LINKKIT_KEY_DEVID       "devid"
@@ -60,6 +62,7 @@ typedef struct {
     void *upstream_mutex;
     int is_opened;
     int is_connected;
+    int cloud_redirect;
     struct list_head upstream_sync_callback_list;
 } iotx_linkkit_ctx_t;
 
@@ -1177,6 +1180,53 @@ static int _iotx_linkkit_slave_close(int devid)
 }
 #endif
 
+//data moved from global data center to the region user used, MUST reinitialized sdk and all devices.
+int user_handle_redirect()
+{
+    iotx_linkkit_dev_meta_info_t meta_info;
+    int id = 0;
+    int res = 0;
+
+    //close master
+
+        memset(&meta_info, 0, sizeof(iotx_linkkit_dev_meta_info_t));
+        HAL_GetProductKey(meta_info.product_key);
+        HAL_GetProductSecret(meta_info.product_secret);
+        HAL_GetDeviceName(meta_info.device_name);
+        HAL_GetDeviceSecret(meta_info.device_secret);
+
+        IOT_Linkkit_Close(IOTX_DM_LOCAL_NODE_DEVID);
+        /* Create Master Device Resources */
+        do {
+            id = IOT_Linkkit_Open(IOTX_LINKKIT_DEV_TYPE_MASTER, &meta_info);
+            if (id < 0) {
+                dm_log_err("IOT_Linkkit_Open Failed, retry after 5s...\n");
+                HAL_SleepMs(5000);
+            }
+        } while (id < 0);
+        /* Start Connect Aliyun Server */
+        do {
+            res = IOT_Linkkit_Connect(id);
+            if (res < 0) {
+                dm_log_err("IOT_Linkkit_Connect Failed, retry after 5s...\n");
+                HAL_SleepMs(5000);
+            }
+        } while (res < 0);
+
+    return 0;
+}
+
+static int user_redirect_event_handler(void)
+{
+    iotx_linkkit_ctx_t *ctx = _iotx_linkkit_get_ctx();
+
+    dm_log_debug("Cloud Redirect");
+
+    ctx->cloud_redirect = 1;
+
+    return 0;
+}
+
 int IOT_Linkkit_Open(iotx_linkkit_dev_type_t dev_type, iotx_linkkit_dev_meta_info_t *meta_info)
 {
     int res = 0;
@@ -1191,6 +1241,7 @@ int IOT_Linkkit_Open(iotx_linkkit_dev_type_t dev_type, iotx_linkkit_dev_meta_inf
             res = _iotx_linkkit_master_open(meta_info);
             if (res == SUCCESS_RETURN) {
                 res = IOTX_DM_LOCAL_NODE_DEVID;
+                IOT_RegisterCallback(ITE_REDIRECT, user_redirect_event_handler);
             }
         }
         break;
@@ -1254,6 +1305,14 @@ void IOT_Linkkit_Yield(int timeout_ms)
 
     if (ctx->is_opened == 0 || ctx->is_connected == 0) {
         return;
+    }
+
+    // NOTICE: Do Not remove the following codes!
+    if (ctx->cloud_redirect == 1){
+        // user_handle_redirect();
+        dm_log_info("Reboot to redirect");
+        HAL_Reboot();
+        ctx->cloud_redirect = 0;
     }
 
     iotx_dm_yield(timeout_ms);

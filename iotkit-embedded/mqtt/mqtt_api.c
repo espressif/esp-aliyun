@@ -9,6 +9,7 @@
 #include "dev_sign_api.h"
 #include "mqtt_api.h"
 #include "mqtt_wrapper.h"
+#include "infra_redirect_region.h"
 
 #ifdef PLATFORM_HAS_DYNMEM
     #ifdef INFRA_MEM_STATS
@@ -591,6 +592,11 @@ void *IOT_MQTT_Construct(iotx_mqtt_param_t *pInitParams)
     callback = iotx_event_callback(ITE_MQTT_CONNECT_SUCC);
     if (callback) {
         ((int (*)(void))callback)();
+    }
+
+    ret = iotx_redirect_region_subscribe();
+    if (ret < 0) {
+        mqtt_err("failed to subscribe mqtt redirect resgion topic.");;
     }
 
     return pclient;
