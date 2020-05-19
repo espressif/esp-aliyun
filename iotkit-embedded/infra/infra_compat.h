@@ -98,6 +98,7 @@ typedef enum {
     ITE_CONNECT_SUCC,
     ITE_CONNECT_FAIL,
     ITE_DISCONNECTED,
+    ITE_REDIRECT,
     ITE_RAWDATA_ARRIVED,
     ITE_SERVICE_REQUEST,
     ITE_PROPERTY_SET,
@@ -126,6 +127,7 @@ DECLARE_EVENT_CALLBACK(ITE_AWSS_STATUS,          int (*cb)(int))
 DECLARE_EVENT_CALLBACK(ITE_CONNECT_SUCC,         int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_CONNECT_FAIL,         int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_DISCONNECTED,         int (*cb)(void))
+DECLARE_EVENT_CALLBACK(ITE_REDIRECT,             int (*cb)(void))
 DECLARE_EVENT_CALLBACK(ITE_RAWDATA_ARRIVED,      int (*cb)(const int, const unsigned char *, const int))
 DECLARE_EVENT_CALLBACK(ITE_SERVICE_REQUEST,       int (*cb)(const int, const char *, const int, const char *, const int,
                        char **, int *))
