@@ -168,7 +168,7 @@ static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *eve
 #ifdef CONFIG_IDF_TARGET_ESP8266
             if (info->disconnected.reason == WIFI_REASON_BASIC_RATE_NOT_SUPPORT) {
                 /*Switch to 802.11 bgn mode */
-                esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCAL_11B | WIFI_PROTOCAL_11G | WIFI_PROTOCAL_11N);
+                esp_wifi_set_protocol(ESP_IF_WIFI_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
             }
 #endif
             esp_wifi_connect();
