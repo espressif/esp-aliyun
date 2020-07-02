@@ -45,6 +45,8 @@ DLL_HAL_API int HAL_Aes128_Cfb_Decrypt(
             _IN_ const void *src,
             _IN_ size_t length,
             _OU_ void *dst);
+DLL_HAL_API int HAL_Awss_Get_Encrypt_Type(void);
+DLL_HAL_API int HAL_Awss_Get_Conn_Encrypt_Type(void);
 /* os_misc.c */
 char *HAL_Wifi_Get_Mac(_OU_ char mac_str[HAL_MAC_LEN]);
 /* awss_main.c */

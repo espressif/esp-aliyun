@@ -27,6 +27,7 @@ int produce_signature(uint8_t *sign, uint8_t *txt, uint32_t txt_len, const char 
 
 extern uint8_t aes_random[RANDOM_MAX_LEN];
 
+int awss_set_token(uint8_t token[RANDOM_MAX_LEN]);
 #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
 }
 #endif
