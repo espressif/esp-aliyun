@@ -136,6 +136,30 @@ static int awss_dev_ap_switchap_resp(void *context, int result,
     return 0;
 }
 
+int softap_decrypt_password(const char *cipher, const uint8_t *random, char *passwd)
+{
+    uint8_t cipher_hex[AES128_KEY_LEN] = {0};
+    uint8_t aes_key[SHA256_DIGEST_SIZE + 1] = {0};
+    uint8_t iv[AES128_KEY_LEN] = {0};
+    p_aes128_t aes_ctx = NULL;
+
+    /* get cipher hex */
+    utils_str_to_hex((char *)cipher, 32, cipher_hex, 16);
+
+    /* setup iv */
+    utils_str_to_hex((char *)random, RANDOM_MAX_LEN * 2, iv, RANDOM_MAX_LEN);
+
+    /* generate aes key */
+    utils_sha256(random, RANDOM_MAX_LEN * 2, aes_key);
+
+    /* aes decryption with cbc mode */
+    aes_ctx = HAL_Aes128_Init((const uint8_t *)aes_key, iv, PLATFORM_AES_DECRYPTION);
+    HAL_Aes128_Cbc_Decrypt(aes_ctx, cipher_hex, sizeof(cipher_hex) / AES128_KEY_LEN, passwd);
+    HAL_Aes128_Destroy(aes_ctx);
+
+    return 0;
+}
+
 int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *remote, void *request)
 {
 #define AWSS_DEV_AP_SWITCHA_RSP_LEN (512)
@@ -147,12 +171,21 @@ int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *rem
     char *str = NULL, *buf = NULL;
     char bssid[ETH_ALEN] = {0};
     char ssid_found = 0;
+    uint8_t token[RANDOM_MAX_LEN + 1];
+    char token_found = 0;
+    uint8_t isRandomKey = 0;
+    const char *p_ranodm_str = NULL;
     int ret = -1;
 
     static char dev_ap_switchap_parsed = 0;
     char topic[TOPIC_LEN_MAX] = {0};
     uint16_t msgid = -1;
     int result = 0;
+
+    if (0 == awss_dev_ap_ongoing) {
+        awss_trace("not in awss mode");
+        return -1;
+    }
 
     if (dev_ap_switchap_parsed != 0)
         goto DEV_AP_SWITCHAP_END;
@@ -161,27 +194,34 @@ int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *rem
     AWSS_UPDATE_STATIS(AWSS_STATIS_DAP_IDX, AWSS_STATIS_TYPE_TIME_START);
 
     msg = os_zalloc(AWSS_DEV_AP_SWITCHA_RSP_LEN);
-    if (msg == NULL)
+    if (msg == NULL) {
+        awss_trace("switchap resp alloc fail");
         goto DEV_AP_SWITCHAP_END;
+    }
     dev_info = os_zalloc(AWSS_DEV_AP_SWITCHA_RSP_LEN);
-    if (dev_info == NULL)
+    if (dev_info == NULL) {
+        awss_trace("switchap resp alloc fail");
         goto DEV_AP_SWITCHAP_END;
+    }
 
     buf = awss_cmp_get_coap_payload(request, &len);
     str = json_get_value_by_name(buf, len, "id", &str_len, 0);
     memcpy(req_msg_id, str, str_len > MSG_REQ_ID_LEN - 1 ? MSG_REQ_ID_LEN - 1 : str_len);
     awss_trace("dev ap, len:%u, %s\r\n", len, buf);
     buf = json_get_value_by_name(buf, len, "params", &len, 0);
-    if (buf == NULL)
+    if (buf == NULL) {
+        awss_trace("switchap req param fail");
         goto DEV_AP_SWITCHAP_END;
+    }
 
     do {
-        produce_random(aes_random, sizeof(aes_random));
-        dev_info[0] = '{';
-        awss_build_dev_info(AWSS_NOTIFY_DEV_BIND_TOKEN, dev_info + 1, AWSS_DEV_AP_SWITCHA_RSP_LEN - 1);
-        dev_info[strlen(dev_info)] = '}';
-        dev_info[AWSS_DEV_AP_SWITCHA_RSP_LEN - 1] = '\0';
-        HAL_Snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, 200, dev_info);
+        /* get security version */
+        str_len = 0;
+        str = json_get_value_by_name(buf, len, "security", &str_len, 0);
+        if (str && str_len == 3 && !memcmp("2.0", str, str_len)) {
+            awss_trace("security ver = %.*s\r\n", str_len, str);
+            isRandomKey = 1;
+        }
 
         str_len = 0;
         str = json_get_value_by_name(buf, len, "ssid", &str_len, 0);
@@ -202,7 +242,9 @@ int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *rem
                 memcpy(ssid, (const char *)decoded, len);
                 ssid[len] = '\0';
             } else {
+                awss_trace("witchap req ssid err");
                 HAL_Snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, -1, "\"ssid error\"");
+                awss_event_post(IOTX_AWSS_CS_ERR);
                 success = 0;
                 break;
             }
@@ -212,10 +254,19 @@ int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *rem
         str = json_get_value_by_name(buf, len, "random", &str_len, 0);
         if (str && str_len ==  RANDOM_MAX_LEN * 2) {
             utils_str_to_hex(str, str_len, (unsigned char *)random, RANDOM_MAX_LEN);
+            p_ranodm_str = str;
         } else {
             HAL_Snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, -4, "\"random len error\"");
+            awss_event_post(IOTX_AWSS_CS_ERR);
             success = 0;
             break;
+        }
+
+        str_len = 0;
+        str = json_get_value_by_name(buf, len, "token", &str_len, 0);
+        if (str && str_len ==  RANDOM_MAX_LEN * 2) {  /* token len equal to random len */
+            utils_str_to_hex(str, str_len, (unsigned char *)token, RANDOM_MAX_LEN);
+            token_found = 1;
         }
 
         str_len = 0;
@@ -228,27 +279,66 @@ int wifimgr_process_dev_ap_switchap_request(void *ctx, void *resource, void *rem
         if (str_len < (PLATFORM_MAX_PASSWD_LEN * 2) - 1) {
             char encoded[PLATFORM_MAX_PASSWD_LEN * 2 + 1] = {0};
             memcpy(encoded, str, str_len);
-            aes_decrypt_string(encoded, passwd, str_len,
-                    0, awss_get_encrypt_type(), 1, random); /* 64bytes=2x32bytes */
+            // aes_decrypt_string(encoded, passwd, str_len,
+            //         0, awss_get_encrypt_type(), 1, random); /* 64bytes=2x32bytes */
+            if (isRandomKey) {
+                if (softap_decrypt_password(encoded, (const uint8_t*)p_ranodm_str, passwd) < 0) {
+                    success = 0;
+                    awss_trace("randomkey passwd decode fail");
+                    awss_event_post(IOTX_AWSS_PASSWD_ERR);
+                }
+            }
+            else {
+                if (aes_decrypt_string(encoded, passwd, str_len, 0, HAL_Awss_Get_Encrypt_Type(), 1, random) < 0) {
+                    /* 64bytes=2x32bytes */
+                    success = 0;
+                    awss_trace("non-random passwd decode");
+                    awss_event_post(IOTX_AWSS_PASSWD_ERR);
+                }
+            }
         } else {
+            awss_trace("passwd len err");
             HAL_Snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, -3, "\"passwd len error\"");
+            awss_event_post(IOTX_AWSS_PASSWD_ERR);
             success = 0;
             AWSS_UPDATE_STATIS(AWSS_STATIS_DAP_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
         }
 
         if (success && is_utf8(passwd, strlen(passwd)) == 0) {
+            awss_trace("passwd content err");
             HAL_Snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, -3 , "\"passwd content error\"");
+            awss_event_post(IOTX_AWSS_PASSWD_ERR);
             success = 0;
             AWSS_UPDATE_STATIS(AWSS_STATIS_DAP_IDX, AWSS_STATIS_TYPE_PASSWD_ERR);
         }
     } while (0);
 
+	if (success == 1) {
+		if (token_found == 0) {
+			// no token found in switchap request, produce new token by dev itself
+			produce_random(aes_random, sizeof(aes_random));
+		} else {
+			// token found in switchap request, no need to produce dev token
+			awss_set_token((uint8_t *)token);
+		}
+        dev_info[0] = '{';
+        awss_build_dev_info(token_found == 1 ? AWSS_NOTIFY_TYPE_MAX : AWSS_NOTIFY_DEV_BIND_TOKEN, dev_info + 1,
+                            AWSS_DEV_AP_SWITCHA_RSP_LEN - 1);
+        dev_info[strlen(dev_info)] = '}';
+        dev_info[AWSS_DEV_AP_SWITCHA_RSP_LEN - 1] = '\0';
+        snprintf(msg, AWSS_DEV_AP_SWITCHA_RSP_LEN, AWSS_ACK_FMT, req_msg_id, 200, dev_info);
+	}
+
     awss_trace("Sending message to app: %s", msg);
     awss_trace("switch to ap: '%s'", ssid);
     awss_build_topic((const char *)TOPIC_AWSS_DEV_AP_SWITCHAP, topic, TOPIC_LEN_MAX);
     result = awss_cmp_coap_send_resp(msg, strlen(msg), remote, topic, request, awss_dev_ap_switchap_resp, &msgid, 1);
-    (void)result;  /* remove complier warnings */
+    // (void)result;  /* remove complier warnings */
     awss_trace("sending %s.", result == 0 ? "success" : "fail");
+
+    if (success == 1) {
+        awss_event_post(IOTX_AWSS_GOT_SSID_PASSWD);
+    }
 
     do {
         int wait_ms = AWSS_DEV_AP_WAIT_TIME_MAX_MS;

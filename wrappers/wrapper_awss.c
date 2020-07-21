@@ -256,3 +256,11 @@ void HAL_Awss_Switch_Channel(char primary_channel, char secondary_channel, uint8
         ESP_LOGW(TAG, "HAL_Awss_Switch_Channel primary %d, second %d", primary_channel, secondary_channel);
     }
 }
+
+int HAL_Awss_Get_Encrypt_Type() {
+    return 3;
+}
+
+int HAL_Awss_Get_Conn_Encrypt_Type() {
+    return 3;
+}

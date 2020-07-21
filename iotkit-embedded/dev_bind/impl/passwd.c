@@ -9,6 +9,19 @@ extern "C"
 #endif
 
 uint8_t aes_random[RANDOM_MAX_LEN] = {0};
+
+int awss_set_token(uint8_t token[RANDOM_MAX_LEN])
+{
+    char rand_str[(RANDOM_MAX_LEN << 1) + 1] = {0};
+    if (token == NULL) {
+        return -1;
+    }
+
+    memcpy(aes_random, token, RANDOM_MAX_LEN);
+    utils_hex_to_str(aes_random, RANDOM_MAX_LEN, rand_str, sizeof(rand_str));
+    awss_trace("bind: app token set %s", rand_str);
+    return 0;
+}
 #ifdef WIFI_PROVISION_ENABLED
 /*
  * 1. place 0 @ 0, because of java modified-UTF8
