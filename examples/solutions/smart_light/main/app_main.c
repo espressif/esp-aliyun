@@ -200,5 +200,10 @@ void app_main()
 
     IOT_SetLogLevel(IOT_LOG_INFO);
 
+#ifdef CONFIG_USE_SOFTAP_CONFIG
+    conn_mgr_set_sc_mode(CONN_SOFTAP_MODE);
+#else
+    conn_mgr_set_sc_mode(CONN_SC_ZERO_MODE);
+#endif
     xTaskCreate((void (*)(void *))start_conn_mgr, "conn_mgr", 3072, NULL, 5, NULL);
 }
