@@ -49,7 +49,8 @@ int HAL_Kv_Del(const char *key);
     int HAL_Firmware_Persistence_Stop(void);
 #endif
 
-#ifdef DEPRECATED_LINKKIT
+//#ifdef DEPRECATED_LINKKIT
+#if 1
 int HAL_SetProductKey(char *product_key);
 int HAL_SetProductSecret(char *product_secret);
 int HAL_SetDeviceName(char *device_name);

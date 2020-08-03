@@ -18,6 +18,7 @@ extern "C" {
 #define AWSS_RESET_REQ_FMT         "{\"id\":%s, \"version\":\"1.0\", \"method\":\"%s\", \"params\":%s}"
 
 #define AWSS_KV_RST                "awss.rst"
+#define AWSS_KV_RST_FLAG           "awss.rst.flag"
 
 static uint8_t awss_report_reset_suc = 0;
 static uint16_t awss_report_reset_id = 0;
@@ -133,13 +134,23 @@ REPORT_RST_ERR:
 
 int awss_report_reset()
 {
-    char rst = 0x01;
-
+    char rst = 0;
+    int ret = 0, len = 1;
     awss_report_reset_suc = 0;
 
-    HAL_Kv_Set(AWSS_KV_RST, &rst, sizeof(rst), 0);
+    HAL_Kv_Get(AWSS_KV_RST_FLAG, &rst, &len);
 
-    return awss_report_reset_to_cloud();
+    if (!rst) {
+        ret = 1;
+        /* guocheng.kgc add for filter unbind msg when device reset */
+        HAL_Kv_Set(AWSS_KV_RST_FLAG, &rst, sizeof(rst), 0);
+        ret = HAL_Kv_Set(AWSS_KV_RST, &rst, sizeof(rst), 0);
+        if (ret < 0) {
+            devrst_err("[RST]", "set %s result is %d\r\n", AWSS_KV_RST, ret);
+        }
+        return awss_report_reset_to_cloud();
+    }
+    return 0;
 }
 
 int awss_check_reset()
