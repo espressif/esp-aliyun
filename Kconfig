@@ -69,6 +69,14 @@ menu "iotkit embedded"
                 Select this option to enable device model gateway
     endmenu
 
+    menu "Aliyun linkkit local control"
+        config DEVICE_ALCS_ENABLE
+            bool "Enable device local control"
+            default n
+            help
+                Select this option to enable device local control
+    endmenu
+
     menu "Aliyun linkkit mqtt config"
         config MQTT_DIRECT
             bool "MQTT DIRECT"
