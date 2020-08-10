@@ -43,16 +43,18 @@ extern void HAL_Free(void *ptr);
 
 static void wifi_sta_rx_probe_req(const uint8_t *frame, int len, int rssi)
 {
-    vendor_ie_data_t *awss_ie_info = (vendor_ie_data_t *)(frame + 60);
-
-    if (awss_ie_info->element_id == WIFI_VENDOR_IE_ELEMENT_ID && awss_ie_info->length != 67 && !memcmp(awss_ie_info->vendor_oui, s_esp_oui, 3)) {
-        if (awss_ie_info->vendor_oui_type == 171) {
+    //Notice: The number must be sync to function awss_init_enrollee_info logic to decode data format
+    //42 = ZC_PROBE_LEN - FCS_SIZE;
+    vendor_ie_data_t *awss_ie_info = (vendor_ie_data_t *)(frame + 42);
+    // vendor_oui is {0xD8, 0x96, 0xE0}
+    if (awss_ie_info->element_id == WIFI_VENDOR_IE_ELEMENT_ID && awss_ie_info->length != 0 && !memcmp(awss_ie_info->vendor_oui, s_esp_oui, 3)) {
+        if (awss_ie_info->vendor_oui_type == 171) { // 171 = WLAN_OUI_TYPE_ENROLLEE
             ESP_LOGW(TAG, "frame is no support, awss_ie_info->type: %d", awss_ie_info->vendor_oui_type);
             return;
         }
-
-        if (s_awss_mgmt_frame_cb)
+        if (s_awss_mgmt_frame_cb) {
             s_awss_mgmt_frame_cb((uint8_t *)awss_ie_info, awss_ie_info->length + 2, rssi, 1);
+        }
     }
 }
 
@@ -95,6 +97,12 @@ int HAL_Wifi_Get_Ap_Info(char ssid[HAL_MAX_SSID_LEN], char passwd[HAL_MAX_PASSWD
         }
 
         if (ap_info.authmode != WIFI_AUTH_OPEN && passwd) {
+            wifi_config_t wifi_cfg;
+            if (esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_cfg) == ESP_OK) {
+                if (wifi_cfg.sta.password) {
+                    memcpy(passwd, wifi_cfg.sta.password, HAL_MAX_PASSWD_LEN);
+                }
+            }
 
         }
     } while (0);

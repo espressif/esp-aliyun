@@ -156,13 +156,15 @@ int HAL_Awss_Connect_Ap(
 
     if (bssid != NULL && strlen((char *)bssid)) {
         memcpy(wifi_config.sta.bssid, bssid, ETH_ALEN);
-        wifi_config.sta.bssid_set = true;
+        wifi_config.sta.bssid_set = false;
     }
 
     wifi_config.sta.channel = channel;
 
     ESP_LOGI(TAG, "ssid: %s, password: %s, channel: %d",
-             wifi_config.sta.ssid, wifi_config.sta.password, channel);
+             wifi_config.sta.ssid, "******", channel);
+
+    ESP_LOGD(TAG, "password: %s", wifi_config.sta.password);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));

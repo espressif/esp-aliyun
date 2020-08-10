@@ -23,7 +23,7 @@
  */
 
 #include <stdio.h>
-
+#include <string.h>
 #include "nvs_flash.h"
 #include "nvs.h"
 
@@ -65,6 +65,8 @@ int HAL_Kv_Del(const char *key)
     nvs_handle handle;
     esp_err_t ret;
 
+    char key_name[16] = {0};
+
     if (key == NULL) {
         ESP_LOGE(TAG, "HAL_Kv_Del Null key");
         return ESP_FAIL;
@@ -81,10 +83,13 @@ int HAL_Kv_Del(const char *key)
         return ESP_FAIL;
     }
 
-    ret = nvs_erase_key(handle, key);
+    /*max key name is 15UL*/
+    memcpy(key_name, key, sizeof(key_name) - 1);
+
+    ret = nvs_erase_key(handle, key_name);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key, ret);
+        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key_name, ret);
     } else {
         nvs_commit(handle);
     }
@@ -98,6 +103,8 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
 {
     nvs_handle handle;
     esp_err_t ret;
+
+    char key_name[16] = {0};
 
     if (key == NULL || val == NULL || buffer_len == NULL) {
         ESP_LOGE(TAG, "HAL_Kv_Get Null params");
@@ -114,11 +121,13 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len)
         ESP_LOGW(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
+    /*max key name is 15UL*/
+    memcpy(key_name, key, sizeof(key_name) - 1);
 
-    ret = nvs_get_blob(handle, key, val, (size_t *) buffer_len);
+    ret = nvs_get_blob(handle, key_name, val, (size_t *) buffer_len);
 
     if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "nvs get blob %s failed with %x", key, ret);
+        ESP_LOGW(TAG, "nvs get blob %s failed with %x", key_name, ret);
     }
 
     nvs_close(handle);
@@ -130,6 +139,8 @@ int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
 {
     nvs_handle handle;
     esp_err_t ret;
+
+    char key_name[16] = {0};
 
     if (key == NULL || val == NULL || len <= 0) {
         ESP_LOGE(TAG, "HAL_Kv_Set NULL params");
@@ -146,11 +157,13 @@ int HAL_Kv_Set(const char *key, const void *val, int len, int sync)
         ESP_LOGE(TAG, "nvs open %s failed with %x", NVS_KV, ret);
         return ESP_FAIL;
     }
-
-    ret = nvs_set_blob(handle, key, val, len);
+    /*max key name is 15UL*/
+    memcpy(key_name, key, sizeof(key_name) - 1);
+    ESP_LOGE(TAG, "Set %s blob value", key_name);
+    ret = nvs_set_blob(handle, key_name, val, len);
 
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key, ret);
+        ESP_LOGE(TAG, "nvs erase key %s failed with %x", key_name, ret);
     } else {
         nvs_commit(handle);
     }

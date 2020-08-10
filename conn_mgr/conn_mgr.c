@@ -160,7 +160,9 @@ static esp_err_t conn_mgr_wifi_event_loop_handler(void *ctx, system_event_t *eve
     switch (event->event_id) {
         case SYSTEM_EVENT_STA_GOT_IP:
             conn_mgr_save_wifi_config();
+#ifdef CONFIG_ESP_TLS_USING_WOLFSSL
             conn_mgr_obtain_time();
+#endif
             break;
 
         case SYSTEM_EVENT_STA_DISCONNECTED:
