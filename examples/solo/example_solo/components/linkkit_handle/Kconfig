@@ -1,0 +1,7 @@
+menu "iotkit solo"
+    config SUPPORT_RAW_DATA
+        bool "Support raw data transfere"
+        default n
+        help
+            Select this option to enable raw data transfere
+endmenu
