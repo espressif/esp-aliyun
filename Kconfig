@@ -117,4 +117,11 @@ config AP_SSID_KEY
     default "apssid"
     help
         The KV key value which store AP SSID
+
+config USE_SOFTAP_CONFIG
+    bool "Use softap config in smart light example"
+    default n
+    help
+        smart light example will use softap config when enable this option. Otherwise use smartconfig.
+
 endmenu
