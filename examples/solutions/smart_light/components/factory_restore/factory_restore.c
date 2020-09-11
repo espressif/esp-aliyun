@@ -27,7 +27,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
-
+#include "esp_sleep.h"
 #include "dm_wrapper.h"
 #include "conn_mgr.h"
 
@@ -87,7 +87,7 @@ static void factory_restore_timer_handler(void *timer)
 
 esp_err_t factory_restore_init(void)
 {
-#ifdef CONFIG_IDF_TARGET_ESP32
+#ifndef CONFIG_IDF_TARGET_ESP8266
     if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED) {
         HAL_Kv_Del(FACTORY_QUICK_REBOOT_TIMES);
         return ESP_OK;
