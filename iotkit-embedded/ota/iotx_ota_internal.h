@@ -90,13 +90,19 @@ int otalib_GetParams(const char *json_doc, uint32_t json_len, char **url, char *
                      uint32_t *file_size);
 int otalib_GetConfigParams(const char *json_doc, uint32_t json_len, char **configId, uint32_t *configSize, char **sign,
                            char **signMethod, char **url, char **getType);
+int otalib_GetFotaParams(const char *json_doc, uint32_t json_len, char **version, uint32_t *file_size, char **sign,
+                           char **signMethod, char **url, char **digestsign);
 int otalib_GenInfoMsg(char *buf, size_t buf_len, uint32_t id, const char *version);
 int otalib_GenReportMsg(char *buf, size_t buf_len, uint32_t id, int progress, const char *msg_detail);
 
 void *ofc_Init(char *url);
 int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s);
 int ofc_Deinit(void *handle);
-
+#ifdef SUPPORT_SECURITY_OTA
+int HAL_OTA_Security_check(const char *digest, const char *sign, const char *signMethod);
+int HAL_Firmware_Check_Rsa_Key(char *buffer, uint32_t length);
+void HAL_Firmware_Need_Check_Security_Ota(uint8_t flag);
+#endif
 #endif /* _IOTX_OTA_INTERNAL_H_ */
 
 

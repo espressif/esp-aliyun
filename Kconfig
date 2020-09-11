@@ -77,6 +77,22 @@ menu "iotkit embedded"
                 Select this option to enable device local control
     endmenu
 
+    menu "Aliyun linkkit security OTA"
+        config SUPPORT_SECURITY_OTA
+            bool "Enable Security OTA"
+            default n
+            help
+                Select this option to enable security ota
+    endmenu
+
+    menu "Aliyun linkkit dynamic register"
+        config DYNAMIC_REGISTER
+            bool "Enable dynamic register"
+            default y
+            help
+                Select this option to enable dynamic register
+    endmenu
+
     menu "Aliyun linkkit mqtt config"
         config MQTT_DIRECT
             bool "MQTT DIRECT"

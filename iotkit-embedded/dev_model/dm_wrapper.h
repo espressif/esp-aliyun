@@ -47,6 +47,9 @@ int HAL_Kv_Del(const char *key);
     void HAL_Firmware_Persistence_Start(void);
     int HAL_Firmware_Persistence_Write(char *buffer, uint32_t length);
     int HAL_Firmware_Persistence_Stop(void);
+#ifdef SUPPORT_SECURITY_OTA
+    int HAL_Firmware_Check_Rsa_Key(char *buffer, uint32_t length);
+#endif
 #endif
 
 //#ifdef DEPRECATED_LINKKIT

@@ -42,7 +42,8 @@ static const char *TAG = "app_entry";
 #define AWSS_CONFIG_NAME             "linkkey"
 #define AWSS_REBOOT_NAME             "reboot"
 #define AWSS_KV_ERASE_DY_SECRET_NAME "kv_clear"
-#define KV_KEY_DEVICE_SECRET         "DRDevSecret"
+#define DYNAMIC_REG_KV_PREFIX       "DYNAMIC_REG_"
+#define DYNAMIC_REG_KV_PREFIX_LEN   12
 
 static bool s_conn_mgr_exist = false;
 
@@ -91,7 +92,11 @@ void app_get_input_param(char *param, size_t param_len)
         esp_restart();
     } else if (!strncmp(param, AWSS_KV_ERASE_DY_SECRET_NAME, strlen(AWSS_KV_ERASE_DY_SECRET_NAME))) {
         ESP_LOGI(TAG, "Clear DY DeviceSecrt KV");
-        HAL_Kv_Del(KV_KEY_DEVICE_SECRET);
+        char kv_key[IOTX_DEVICE_NAME_LEN + DYNAMIC_REG_KV_PREFIX_LEN] = DYNAMIC_REG_KV_PREFIX;
+        char DEVICE_NAME[IOTX_DEVICE_NAME_LEN + 1] = {0};
+        HAL_GetDeviceName(DEVICE_NAME);
+        memcpy(kv_key + strlen(kv_key), DEVICE_NAME, strlen(DEVICE_NAME));
+        HAL_Kv_Del(kv_key);
         return;
     }
 

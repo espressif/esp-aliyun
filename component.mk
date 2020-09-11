@@ -1,5 +1,5 @@
 # Makefile
-
+COMPONENT_ADD_LDFLAGS += -u ota_pubn_buf
 COMPONENT_PRIV_INCLUDEDIRS := \
 iotkit-embedded/coap_server/CoAPPacket \
 iotkit-embedded/coap_server/server \
