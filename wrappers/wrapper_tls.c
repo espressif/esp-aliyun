@@ -235,6 +235,9 @@ int HAL_SSL_Read(uintptr_t handle, char *buf, int len, int timeout_ms)
     if (ret < 0) {
         ESP_LOGE(TAG, "esp_tls_conn_read error, errno:%s", strerror(errno));
     }
+    if (ret == 0) {
+        ret = -1;
+    }
 
     return ret;
 }

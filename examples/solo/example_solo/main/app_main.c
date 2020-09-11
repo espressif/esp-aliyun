@@ -42,7 +42,7 @@ static const char *TAG = "app main";
 
 static bool linkkit_started = false;
 #ifdef CONFIG_IDF_TARGET_ESP8266
-#define LINK_MAIN_TASK_SIZE 5 * 1024
+#define LINK_MAIN_TASK_SIZE 10 * 1024
 #else
 #define LINK_MAIN_TASK_SIZE 10 * 1024
 #endif

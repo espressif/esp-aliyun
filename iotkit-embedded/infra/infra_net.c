@@ -407,8 +407,7 @@ int utils_net_tcp_read(utils_network_pt pNetwork, char *buffer, uint32_t len, ui
         ret = read_tcp(pNetwork, buffer, len, timeout_ms);
     }
     else {
-        ret = -1;
-        net_err("no method match!");
+        ret = read_ssl(pNetwork, buffer, len, timeout_ms);
     }
 
     return ret;
@@ -422,8 +421,7 @@ int utils_net_tcp_write(utils_network_pt pNetwork, const char *buffer, uint32_t 
         ret = write_tcp(pNetwork, buffer, len, timeout_ms);
     }
     else {
-        ret = -1;
-        net_err("no method match!");
+        ret = write_ssl(pNetwork, buffer, len, timeout_ms);
     }
 
     return ret;
@@ -437,8 +435,7 @@ int iotx_net_tcp_disconnect(utils_network_pt pNetwork)
         ret = disconnect_tcp(pNetwork);
     }
     else {
-        ret = -1;
-        net_err("no method match!");
+        ret = disconnect_ssl(pNetwork);
     }
 
     return  ret;
@@ -451,8 +448,7 @@ int iotx_net_tcp_connect(utils_network_pt pNetwork)
         ret = connect_tcp(pNetwork);
     }
     else {
-        ret = -1;
-        net_err("no method match!");
+        ret = connect_ssl(pNetwork);
     }
 
     return ret;
