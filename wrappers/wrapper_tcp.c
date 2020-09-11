@@ -75,20 +75,20 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 
     if ((rc = getaddrinfo(host, service, &hints, &addrInfoList)) != 0) {
         ESP_LOGE(TAG, "getaddrinfo error");
-        return 0;
+        return -1;
     }
 
     for (cur = addrInfoList; cur != NULL; cur = cur->ai_next) {
         if (cur->ai_family != AF_INET) {
             ESP_LOGE(TAG, "socket type error");
-            rc = 0;
+            rc = -1;
             continue;
         }
 
         fd = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
         if (fd < 0) {
             ESP_LOGE(TAG, "create socket error");
-            rc = 0;
+            rc = -1;
             continue;
         }
 
@@ -102,10 +102,10 @@ uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 
         close(fd);
         ESP_LOGE(TAG, "connect error");
-        rc = 0;
+        rc = -1;
     }
 
-    if (0 == rc) {
+    if (-1 == rc) {
         ESP_LOGI(TAG, "fail to establish tcp");
     } else {
         ESP_LOGI(TAG, "success to establish tcp, fd=%d", rc);

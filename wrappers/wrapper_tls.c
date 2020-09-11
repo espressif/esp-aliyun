@@ -194,13 +194,24 @@ static void HAL_utils_ms_to_timeval(int timeout_ms, struct timeval *tv)
 
 static int ssl_poll_read(esp_tls_t *tls, int timeout_ms)
 {
+    int ret = -1;
     fd_set readset;
+    fd_set errset;
     FD_ZERO(&readset);
+    FD_ZERO(&errset);
     FD_SET(tls->sockfd, &readset);
+    FD_SET(tls->sockfd, &errset);
     struct timeval timeout;
     HAL_utils_ms_to_timeval(timeout_ms, &timeout);
-
-    return select(tls->sockfd + 1, &readset, NULL, NULL, &timeout);
+    ret = select(tls->sockfd + 1, &readset, NULL, &errset, &timeout);
+    if (ret > 0 && FD_ISSET(tls->sockfd, &errset)) {
+        int sock_errno = 0;
+        uint32_t optlen = sizeof(sock_errno);
+        getsockopt(tls->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
+        ESP_LOGE(TAG, "ssl_poll_read select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tls->sockfd);
+        ret = -1;
+    }
+    return ret;
 }
 
 int HAL_SSL_Read(uintptr_t handle, char *buf, int len, int timeout_ms)
@@ -230,12 +241,24 @@ int HAL_SSL_Read(uintptr_t handle, char *buf, int len, int timeout_ms)
 
 static int ssl_poll_write(esp_tls_t *tls, int timeout_ms)
 {
+    int ret = -1;
     fd_set writeset;
+    fd_set errset;
     FD_ZERO(&writeset);
+    FD_ZERO(&errset);
     FD_SET(tls->sockfd, &writeset);
+    FD_SET(tls->sockfd, &errset);
     struct timeval timeout;
     HAL_utils_ms_to_timeval(timeout_ms, &timeout);
-    return select(tls->sockfd + 1, NULL, &writeset, NULL, &timeout);
+    ret = select(tls->sockfd + 1, NULL, &writeset, &errset, &timeout);
+    if (ret > 0 && FD_ISSET(tls->sockfd, &errset)) {
+        int sock_errno = 0;
+        uint32_t optlen = sizeof(sock_errno);
+        getsockopt(tls->sockfd, SOL_SOCKET, SO_ERROR, &sock_errno, &optlen);
+        ESP_LOGE(TAG, "ssl_poll_write select error %d, errno = %s, fd = %d", sock_errno, strerror(sock_errno), tls->sockfd);
+        ret = -1;
+    }
+    return ret;
 }
 
 int HAL_SSL_Write(uintptr_t handle, const char *buf, int len, int timeout_ms)
@@ -249,7 +272,7 @@ int HAL_SSL_Write(uintptr_t handle, const char *buf, int len, int timeout_ms)
     }
 
     if ((poll = ssl_poll_write(tls, timeout_ms)) <= 0) {
-        ESP_LOGW(TAG, "Poll timeout or error, errno=%s, fd=%d, timeout_ms=%d", strerror(errno), tls->sockfd, timeout_ms);
+        ESP_LOGE(TAG, "ssl_poll_write return %d, timeout is %d", poll, timeout_ms);
         return poll;
     }
 

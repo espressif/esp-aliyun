@@ -58,7 +58,7 @@ $ ./components/esptool_py/esptool/esptool.py --help
 
 > Espressif SDK 下载好后：  
 > ESP-IDF: 请切换到 release/v3.2 分支： `git checkout release/v3.2`  
-> ESP8266_RTOS_SDK: 请切换到 release/v3.2 分支： `git checkout release/v3.2`
+> ESP8266_RTOS_SDK: 请切换到 release/v3.3 分支： `git checkout release/v3.3`
 
 # <span id = "makeflash">6.编译 & 烧写 & 运行</span>
 ## 6.1 编译

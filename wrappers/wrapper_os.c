@@ -23,14 +23,14 @@
  */
 
 #include "wrappers_defs.h"
-
+#include <sys/time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 
 #include "pthread.h"
-
+#include "esp_wifi.h"
 #include "esp_log.h"
 
 static const char *TAG = "os";
@@ -59,6 +59,27 @@ void pthread_exit(void *value_ptr)
 }
 #endif
 #endif
+
+static long long os_time_get(void)
+{
+    struct timeval tv;
+    long long ms;
+    gettimeofday(&tv, NULL);
+    ms = tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+    return ms;
+}
+
+static long long delta_time = 0;
+
+void HAL_UTC_Set(long long ms)
+{
+    delta_time = ms - os_time_get();
+}
+
+long long HAL_UTC_Get(void)
+{
+    return delta_time + os_time_get();
+}
 
 /**
  * @brief Create a mutex.
@@ -216,17 +237,14 @@ int HAL_ThreadCreate(
     }
 
     *stack_used = 0;
+    printf("task name is %s\n", hal_os_thread_param->name);
 
-#ifdef CONFIG_IDF_TARGET_ESP8266
-    ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
-#else
     if (hal_os_thread_param->stack_size == 0) {
         ret = pthread_create((pthread_t *)thread_handle, NULL, work_routine, arg);
     } else {
         attr.stacksize = hal_os_thread_param->stack_size;
         ret = pthread_create((pthread_t *)thread_handle, &attr, work_routine, arg);
     }
-#endif
     return ret;
 
 }
