@@ -100,12 +100,12 @@ static void lightbulb_set_aim(uint32_t r, uint32_t g, uint32_t b, uint32_t cw, u
     pwm_set_duty(LEDC_CHANNEL_2, b);
     pwm_start();
 #else
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, r);
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1, g);
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_2, b);
-    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0);
-    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1);
-    ledc_update_duty(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_2);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, r);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, g);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, b);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2);
 #endif
 }
 
@@ -214,7 +214,7 @@ void lightbulb_init(void)
         //set frequency of pwm
         .freq_hz = 5000,
         //timer mode,
-        .speed_mode = LEDC_HIGH_SPEED_MODE,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
         //timer index
         .timer_num = LEDC_TIMER_0
     };
@@ -231,7 +231,7 @@ void lightbulb_init(void)
         //GPIO INTR TYPE, as an example, we enable fade_end interrupt here.
         .intr_type = LEDC_INTR_FADE_END,
         //set LEDC mode, from ledc_mode_t
-        .speed_mode = LEDC_HIGH_SPEED_MODE,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
         //set LEDC timer source, if different channel use one timer,
         //the frequency and bit_num of these channels should be the same
         .timer_sel = LEDC_TIMER_0
@@ -257,9 +257,9 @@ void lightbulb_deinit(void)
 {
 #ifdef CONFIG_IDF_TARGET_ESP8266
 #else
-    ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, 0);
-    ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_1, 0);
-    ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_2, 0);
+    ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+    ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
+    ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_2, 0);
 #endif
 }
 

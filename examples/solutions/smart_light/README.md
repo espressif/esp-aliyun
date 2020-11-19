@@ -58,6 +58,7 @@ cd examples/solutions/smart_light
 make chip=esp32 defconfig 或者 make chip=esp8266 defconfig
 make -j8 flash monitor
 ```
+使用 esp32s2 请参考根目录 README。
 
 > 在测试配网中, 请先执行 `make erase_flash` .
 

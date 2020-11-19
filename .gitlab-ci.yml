@@ -1,6 +1,7 @@
 stages:
   - build_esp8266
   - build_esp32
+  - build_esp32s2
   - deploy
 
 variables:
@@ -76,13 +77,41 @@ build_esp32_demo_cmake_v3.3:
     - cd examples/solutions/smart_light
     - $IDF_PATH/tools/idf.py build
 
+build_esp32s2_demo_cmake:
+  stage: build_esp32s2
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env
+  tags:
+    - build
+  script:
+    # add gitlab ssh key
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
+    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    - git --version
+    - git submodule update --init --recursive
+    - git clone --branch master --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+    - cd esp-idf
+    - ./install.sh
+    - . $IDF_PATH/export.sh
+    - ./tools/ci/mirror-submodule-update.sh
+    - cd ..
+    - cd examples/solutions/smart_light
+    - $IDF_PATH/tools/idf.py set-target esp32s2
+    - $IDF_PATH/tools/idf.py build
+
 push_to_github:
   stage: deploy
   only:
     - master
     - /^release\/v/
+    - /^v\d+\.\d+(\.\d+)?($|-)/
 #  when: on_success
   image: espressif/esp32-ci-env
+  tags:
+    - deploy
   variables:
     GIT_STRATEGY: clone
     GITHUB_PUSH_REFS: refs/remotes/origin/release refs/remotes/origin/master
