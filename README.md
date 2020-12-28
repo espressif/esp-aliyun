@@ -15,7 +15,7 @@
 [阿里云物联网套件](https://github.com/aliyun/iotkit-embedded)是阿里云专门为物联网领域的开发人员推出的，其目的是帮助开发者搭建安全性能强大的数据通道，方便终端（如传感器、执行器、嵌入式设备或智能家电等等）和云端的双向通信。全球多节点部署让海量设备全球范围都可以安全低延时接入阿里云IoT Hub，安全上提供多重防护保障设备云端安全，性能上能够支撑亿级设备长连接，百万消息并发。物联网套件还提供了一站式托管服务，数据从采集到计算到存储，用户无需购买服务器部署分布式架构，用户通过规则引擎只需在web上配置规则即可实现采集+计算+存储等全栈服务。总而言之，基于物联网套件提供的服务，物联网开发者可以快速搭建稳定可靠的物联网平台。
 
 # <span id = "aim">1.目的</span>
-本文基于 linux 环境，介绍 ESP 设备对接阿里云平台的具体流程，供读者参考。
+本文基于 linux 环境，介绍 ESP 设备对接阿里云平台的具体流程，供读者参考。当前只维护 **smart_light** 和 **solo** 示例，这两个示例包含了另外三个示例的功能，建议直接选择这两个示例 demo。
 
 # <span id = "hardwareprepare">2.硬件准备</span>
 - **linux 环境**  
@@ -57,9 +57,9 @@ $ ./components/esptool_py/esptool/esptool.py --help
   - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
 
 > Espressif SDK 下载好后：  
-> ESP-IDF: 请切换到 release/v3.2 分支： `git checkout release/v3.2`
-如果需要使用 ESP32S2 模组，请切换到 release/v4.2 版本： `git checkout release/v4.2`
-> ESP8266_RTOS_SDK: 请切换到 release/v3.3 分支： `git checkout release/v3.3`
+> ESP-IDF: 请切换到 v4.2 分支： `git checkout v4.2`
+如果需要使用 ESP32S2 模组，请切换到 v4.2 版本： `git checkout v4.2`
+> ESP8266_RTOS_SDK: 请切换到 v3.3 分支： `git checkout v3.3`
 
 # <span id = "makeflash">6.编译 & 烧写 & 运行</span>
 ## 6.1 编译

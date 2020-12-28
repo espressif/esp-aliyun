@@ -1,106 +1,58 @@
 stages:
-  - build_esp8266
-  - build_esp32
-  - build_esp32s2
+  - build
   - deploy
 
 variables:
   BATCH_BUILD: "1"
   V: "0"
   MAKEFLAGS: "-j5 --no-keep-going"
-  IDF_PATH: "$CI_PROJECT_DIR/esp-idf"
   IDF_CI_BUILD: "1"
 
-build_esp8266_demo:
-  stage: build_esp8266
-  image: $CI_DOCKER_REGISTRY/esp8266-ci-env-new 
+build_esp8266_demo_v3.3:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/ae-esp8266-ci-env:latest-029382ce
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git submodule update --init --recursive
-    - git clone --branch release/v3.3 --depth 1 $GITLAB_SSH_SERVER/sdk/ESP8266_RTOS_SDK.git
-    - export IDF_PATH=$CI_PROJECT_DIR/ESP8266_RTOS_SDK
+    - export IDF_PATH=~/.espressif/rtos/ESP8266_RTOS_SDK-v3.3
     - cd examples/solutions/smart_light
     - make chip=esp8266 defconfig
     - make
 
-build_esp32_demo:
-  stage: build_esp32
-  image: $CI_DOCKER_REGISTRY/esp32-ci-env
+build_esp32_demo_make_v4.2:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/ae-esp32-ci-env:latest-3cf42c4c
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git submodule update --init --recursive
-    - git clone --branch release/v3.3 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
-    - cd esp-idf
-    - ./tools/ci/mirror-submodule-update.sh
-    - cd ..
+    - export IDF_PATH=~/.espressif/idf/esp-idf-v4.2
+    - . $IDF_PATH/export.sh
     - cd examples/solutions/smart_light
     - make chip=esp32 defconfig
     - make
 
-build_esp32_demo_cmake_v3.3:
-  stage: build_esp32
-  image: $CI_DOCKER_REGISTRY/esp32-ci-env
+build_esp32_demo_cmake_v4.2:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/ae-esp32-ci-env:latest-3cf42c4c
   tags:
     - build
   script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git submodule update --init --recursive
-    - git clone --branch release/v3.3 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
-    - cd esp-idf
-    - ./tools/ci/mirror-submodule-update.sh
-    - cd ..
-    - cd examples/solutions/smart_light
-    - $IDF_PATH/tools/idf.py build
-
-build_esp32s2_demo_cmake:
-  stage: build_esp32s2
-  image: $CI_DOCKER_REGISTRY/esp32-ci-env
-  tags:
-    - build
-  script:
-    # add gitlab ssh key
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    - git --version
-    - git submodule update --init --recursive
-    - git clone --branch master --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
-    - cd esp-idf
-    - ./install.sh
+    - export IDF_PATH=~/.espressif/idf/esp-idf-v4.2
     - . $IDF_PATH/export.sh
-    - ./tools/ci/mirror-submodule-update.sh
-    - cd ..
     - cd examples/solutions/smart_light
-    - $IDF_PATH/tools/idf.py set-target esp32s2
-    - $IDF_PATH/tools/idf.py build
+    - idf.py build
+
+build_esp32s2_demo_cmake_v4.2:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/ae-esp32-ci-env:latest-3cf42c4c
+  tags:
+    - build
+  script:
+    - export IDF_PATH=~/.espressif/idf/esp-idf-v4.2
+    - . $IDF_PATH/export.sh
+    - cd examples/solutions/smart_light
+    - idf.py set-target esp32s2
+    - idf.py build
 
 push_to_github:
   stage: deploy
