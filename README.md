@@ -56,9 +56,8 @@ $ ./components/esptool_py/esptool/esptool.py --help
   - ESP32 & ESP32S2 平台: [ESP-IDF](https://github.com/espressif/esp-idf)
   - ESP8266 平台: [ESP8266_RTOS_SDK](https://github.com/espressif/ESP8266_RTOS_SDK)
 
-> Espressif SDK 下载好后：  
-> ESP-IDF: 请切换到 release/v3.2 分支： `git checkout release/v3.2`
-如果需要使用 ESP32S2 模组，请切换到 release/v4.2 版本： `git checkout release/v4.2`
+> Espressif SDK 下载好后： 
+> ESP-IDF: 请切换到 release/v4.2 分支： `git checkout release/v4.2`
 > ESP8266_RTOS_SDK: 请切换到 release/v3.3 分支： `git checkout release/v3.3`
 
 # <span id = "makeflash">6.编译 & 烧写 & 运行</span>
@@ -70,9 +69,9 @@ $ ./components/esptool_py/esptool/esptool.py --help
 ### 6.1.2 编译 demo 示例
 **由于 esp32 和 esp8266 将会采用不同的 sdkconfig.defaults 和对应的 partitions.csv，在对应的 make 命令中加入了对应的芯片选项，如 chip=esp32 或 chip=esp8266。**
 
-当 chip=esp32 时将默认使用 sdkconfig_esp32.defaults 以及 partitions_esp32.csv。
+当 chip=esp32 时，将默认使用 sdkconfig_esp32.defaults 以及 partitions_esp32.csv。
 
-当 chip=esp8266 时将默认使用 sdkconfig_esp8266.defaults 以及 partitions_esp8266.csv。
+当 chip=esp8266 时，将默认使用 sdkconfig_esp8266.defaults 以及 partitions_esp8266.csv。
 
 当使用 esp32s2 时，将默认使用 sdkconfig.defaults ，sdkconfig.defaults.esp32s2 以及 partitions_esp32s2.csv，编译方式与 8266 & 32 都不一样，需要使用 cmake 进行编译。
 
@@ -86,7 +85,14 @@ make chip=esp32 defconfig
 make menuconfig
 ```
 
-如果需要编译esp32s2版本, 请按照如下步骤编译:
+如果使用 cmake 编译 esp32 版本, 请按照如下步骤编译:
+
+```
+cd examples/solutions/smart_light
+idf.py menuconfig
+```
+
+如果需要编译 esp32s2 版本, 请按照如下步骤编译:
 
 执行如下命令，以 solo 示例为例，目前只支持 solo 和 smart_light 示例。
 
