@@ -101,12 +101,22 @@ idf.py menuconfig
 - 配置烧写串口
 - 配置 `WIFI_SSID`, `WIFI_PASSWORD`
 
+如果需要编译esp32s3版本, 当前只支持 master 版本。请按照如下步骤编译:
+
+执行如下命令，以 solo 示例为例，目前只支持 solo 和 smart_light 示例。
+
+```
+cd examples/solo/example_solo
+idf.py set-target esp32s3
+idf.py menuconfig
+```
+
 2.生成最终 bin
 
 ```
 make -j8
 ```
-使用 esp32s2 生成 bin
+使用 esp32s2/esp32s3 生成 bin
 
 ```
 idf.py build
@@ -126,7 +136,7 @@ make erase_flash
 make flash
 ```
 
-使用 esp32s2 擦除 flash
+使用 esp32s2/esp32s3 擦除 flash
 ```
 idf.py -p (PORT) erase_flash
 ```
