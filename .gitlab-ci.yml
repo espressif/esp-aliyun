@@ -54,6 +54,33 @@ build_esp32s2_demo_cmake_v4.2:
     - idf.py set-target esp32s2
     - idf.py build
 
+build_esp32s3_demo_cmake_master:
+  stage: build
+  image: $CI_DOCKER_REGISTRY/esp-env:v4.4-1
+  tags:
+    - build
+  script:
+  # add gitlab ssh key
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -n $GITLAB_KEY > ~/.ssh/id_rsa_base64
+    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host gitlab.espressif.cn\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    - git --version
+    - git clone --recursive -b v4.3.1 --depth 1 $GITLAB_SSH_SERVER/idf/esp-idf.git
+    - export IDF_PATH=$CI_PROJECT_DIR/esp-idf
+    - cd esp-idf/
+    - git checkout ${CI_COMMIT_REF_NAME} || echo "Using esp-idf default branch..."
+    - source tools/ci/configure_ci_environment.sh
+    - source tools/ci/setup_python.sh
+    # setup correct toolchain
+    - tools/idf_tools.py --non-interactive install && eval "$(tools/idf_tools.py --non-interactive export)" || exit 1
+    - cd -
+    - cd examples/solutions/smart_light
+    - idf.py --preview set-target esp32s3
+    - idf.py build
+
 push_to_github:
   stage: deploy
   only:
