@@ -83,4 +83,4 @@ $IDF_PATH/tools/mass_mfg/mfg_gen.py --conf multipule_mfg_config.csv --values my_
 
 其中 --prefix 为生成的批量文件的前缀名称，可以修改为所需要的产品名称。执行完成后，会在当前目录下生成一 bin 目录，里面保持了所有可用于量产的 NVS 分区 bin。
 
-> 注，当前不知道 aliyun 能否批量导出 ProductKey、ProductSecret、DeviceName、DeviceSecret，如有需要，可以编写特定脚本来生成 my_multipule_mfg_values.csv。
+> 注，aliyun 提供有 [BatchQueryDeviceDetail](https://help.aliyun.com/document_detail/123470.html) 接口可以批量导出指定设备的 DeviceName、DeviceSecret 等信息到 my_multipule_mfg_values.csv。实际量产建议使用 [BatchRegisterDevice](https://help.aliyun.com/document_detail/69473.html)（注册随机 DeviceName） 或 [BatchRegisterDeviceWithApplyId](https://help.aliyun.com/document_detail/69514.htm)（注册指定的 DeviceName）接口来批量注册设备，然后使用 [QueryPageByApplyId](https://help.aliyun.com/document_detail/69518.html) 接口获取相关 DeviceName 与 DeviceSecret 信息。
